@@ -4,7 +4,10 @@ import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
 import com.prj.habittracker.habit.entity.HabitEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,12 +21,13 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
             h.status,
             t.unit,
             t.value,
-            c.progress
+            c.progress,
+            CASE WHEN c.id IS NOT NULL THEN c.completed ELSE false END
         )
         FROM HabitEntity h
         JOIN HabitTargetEntity t ON h.id = t.habit.id
-        JOIN HabitCheckinEntity c ON h.id = c.habit.id
+        LEFT JOIN HabitCheckinEntity c ON h.id = c.habit.id AND c.checkinDate = :date
         WHERE h.user.id  = :userId
     """)
-    List<HabitSummaryResponse> getAllHabits(UUID userId);
+    List<HabitSummaryResponse> getAllHabits(UUID userId, LocalDate date);
 }

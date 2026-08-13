@@ -1,0 +1,1 @@
+alter table habit_checkins add column completed BOOLEAN NOT NULL DEFAULT FALSE;

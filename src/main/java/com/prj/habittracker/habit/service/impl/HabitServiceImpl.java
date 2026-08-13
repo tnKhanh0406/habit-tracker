@@ -6,6 +6,7 @@ import com.prj.habittracker.habit.entity.HabitCheckinEntity;
 import com.prj.habittracker.habit.entity.HabitEntity;
 import com.prj.habittracker.habit.entity.HabitScheduleEntity;
 import com.prj.habittracker.habit.entity.HabitTargetEntity;
+import com.prj.habittracker.habit.mapper.HabitSummaryMapper;
 import com.prj.habittracker.habit.repository.HabitCheckinRepository;
 import com.prj.habittracker.habit.repository.HabitRepository;
 import com.prj.habittracker.habit.repository.HabitScheduleRepository;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,6 +32,7 @@ public class HabitServiceImpl implements HabitService {
     private final HabitTargetRepository habitTargetRepository;
     private final HabitCheckinRepository habitCheckinRepository;
     private final UserRepository userRepository;
+    private final HabitSummaryMapper habitSummaryMapper;
 
     private UserEntity getCurrentUser() {
         UUID id = UUID.fromString("927b1ae6-62fd-4298-8265-1ded965cb274");
@@ -56,21 +59,11 @@ public class HabitServiceImpl implements HabitService {
         habitTargetEntity.setHabit(saved);
         habitCheckinRepository.save(habitCheckinEntity);
 
-        return new HabitSummaryResponse(
-                saved.getId(),
-                saved.getName(),
-                saved.getIcon(),
-                saved.getColor(),
-                saved.getStatus(),
-                habitTargetEntity.getUnit(),
-                habitTargetEntity.getValue(),
-                habitCheckinEntity.getProgress()
-        );
+        return habitSummaryMapper.toResponse(saved, habitTargetEntity, habitCheckinEntity);
     }
 
     @Override
     public List<HabitSummaryResponse> getAllHabits() {
-
-        return List.of();
+        return habitRepository.getAllHabits(getCurrentUser().getId(), LocalDate.now());
     }
 }

@@ -13,6 +13,10 @@ public record HabitSummaryResponse(
         HabitStatus status,
         String targetUnit,
         BigDecimal targetValue,
-        BigDecimal progress
+        BigDecimal progress,
+        Boolean completed
 ) {
+    public HabitSummaryResponse {
+        progress = progress != null ? progress : BigDecimal.ZERO;
+    }
 }

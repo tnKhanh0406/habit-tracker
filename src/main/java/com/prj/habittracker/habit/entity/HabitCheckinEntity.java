@@ -28,7 +28,7 @@ public class HabitCheckinEntity {
     @Column(nullable = false, updatable = false)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "habit_id", nullable = false)
     private HabitEntity habit;
 
@@ -37,6 +37,9 @@ public class HabitCheckinEntity {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal progress = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    private Boolean completed = false;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
