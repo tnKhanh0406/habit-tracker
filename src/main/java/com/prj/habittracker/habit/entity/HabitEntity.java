@@ -20,7 +20,7 @@ public class HabitEntity {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(columnDefinition = "text")

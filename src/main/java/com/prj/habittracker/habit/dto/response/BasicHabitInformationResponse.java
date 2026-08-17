@@ -1,0 +1,16 @@
+package com.prj.habittracker.habit.dto.response;
+
+import com.prj.habittracker.common.enums.HabitDifficulty;
+
+import java.util.List;
+import java.util.UUID;
+
+public record BasicHabitInformationResponse(
+        UUID id,
+        String name,
+        String description,
+        String color,
+        String icon,
+        HabitDifficulty difficulty,
+        List<UUID> categories
+) {}

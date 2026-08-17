@@ -1,13 +1,17 @@
 package com.prj.habittracker.habit.controller;
 
+import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
 import com.prj.habittracker.habit.dto.request.CreateHabitWithNameRequest;
+import com.prj.habittracker.habit.dto.response.BasicHabitInformationResponse;
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
 import com.prj.habittracker.habit.service.HabitService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -16,7 +20,7 @@ public class HabitController {
     private final HabitService habitService;
 
     @PostMapping
-    public ResponseEntity<HabitSummaryResponse> createHabitWithName(@RequestBody CreateHabitWithNameRequest request) {
+    public ResponseEntity<HabitSummaryResponse> createHabitWithName(@RequestBody @Valid CreateHabitWithNameRequest request) {
         HabitSummaryResponse response = habitService.createHabitWithName(request);
         return ResponseEntity.ok(response);
     }
@@ -24,6 +28,12 @@ public class HabitController {
     @GetMapping
     public ResponseEntity<List<HabitSummaryResponse>> getAllHabits() {
         List<HabitSummaryResponse> response = habitService.getAllHabits();
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{habitId}")
+    public ResponseEntity<?> updateBasicHabitInformation(@PathVariable("habitId") String habitId, @RequestBody @Valid BasicHabitInformationRequest request) {
+        BasicHabitInformationResponse response = habitService.updateBasicHabitInformation(request, UUID.fromString(habitId));
         return ResponseEntity.ok(response);
     }
 }

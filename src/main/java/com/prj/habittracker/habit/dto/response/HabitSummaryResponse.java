@@ -18,5 +18,6 @@ public record HabitSummaryResponse(
 ) {
     public HabitSummaryResponse {
         progress = progress != null ? progress : BigDecimal.ZERO;
+        completed = completed != null ? completed : false;
     }
 }

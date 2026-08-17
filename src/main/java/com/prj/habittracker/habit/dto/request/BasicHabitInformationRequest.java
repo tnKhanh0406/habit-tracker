@@ -1,0 +1,25 @@
+package com.prj.habittracker.habit.dto.request;
+
+import com.prj.habittracker.common.enums.HabitDifficulty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.util.List;
+import java.util.UUID;
+
+public record BasicHabitInformationRequest(
+    @NotBlank
+    @Size(max = 100)
+    String name,
+    String description,
+    @NotBlank
+    String color,
+    @NotBlank
+    String icon,
+    @NotNull
+    HabitDifficulty difficulty,
+    @NotNull
+    List<UUID> categoryIds
+) {
+}
