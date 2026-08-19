@@ -2,6 +2,7 @@ package com.prj.habittracker.habit.controller;
 
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
 import com.prj.habittracker.habit.dto.request.CreateHabitWithNameRequest;
+import com.prj.habittracker.habit.dto.request.HabitScheduleRequest;
 import com.prj.habittracker.habit.dto.response.BasicHabitInformationResponse;
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
 import com.prj.habittracker.habit.service.HabitService;
@@ -31,9 +32,15 @@ public class HabitController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{habitId}")
+    @PutMapping("/basic/{habitId}")
     public ResponseEntity<?> updateBasicHabitInformation(@PathVariable("habitId") String habitId, @RequestBody @Valid BasicHabitInformationRequest request) {
         BasicHabitInformationResponse response = habitService.updateBasicHabitInformation(request, UUID.fromString(habitId));
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/schedule/{habitId}")
+    public ResponseEntity<?> updateHabitSchedule(@PathVariable("habitId") String habitId, @RequestBody @Valid HabitScheduleRequest request) {
+        habitService.updateHabitSchedule(UUID.fromString(habitId), request);
+        return ResponseEntity.noContent().build();
     }
 }

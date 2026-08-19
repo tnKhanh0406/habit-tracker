@@ -1,8 +1,10 @@
 package com.prj.habittracker.habit.service.impl;
 
+import com.prj.habittracker.common.enums.ScheduleType;
 import com.prj.habittracker.common.exception.ForbiddenException;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
 import com.prj.habittracker.habit.dto.request.CreateHabitWithNameRequest;
+import com.prj.habittracker.habit.dto.request.HabitScheduleRequest;
 import com.prj.habittracker.habit.dto.response.BasicHabitInformationResponse;
 import com.prj.habittracker.habit.dto.response.CategoryResponse;
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
@@ -118,6 +120,30 @@ public class HabitServiceImpl implements HabitService {
         );
     }
 
+    @Override
+    @Transactional
+    public void updateHabitSchedule(UUID habitId, HabitScheduleRequest request) {
+        HabitScheduleEntity schedule = habitScheduleRepository.findByHabitId(habitId)
+                .orElseThrow(EntityNotFoundException::new);
+        validateScheduleRequest(request);
+        schedule.setScheduleType(request.scheduleType());
+        schedule.setIntervalValue(request.intervalValue());
+        schedule.setStartDate(request.startDate());
+        schedule.setEndDate(request.endDate());
+
+        if (request.scheduleType() == ScheduleType.WEEKLY) {
+            List<HabitScheduleWeekdayEntity> weekdays = request.weekdays().stream()
+                    .map(day -> {
+                        HabitScheduleWeekdayEntity weekday = new HabitScheduleWeekdayEntity();
+                        weekday.setHabitSchedule(schedule);
+                        weekday.setWeekday(day);
+                        return weekday;
+                    }).toList();
+            schedule.getWeekdays().clear();
+            schedule.getWeekdays().addAll(weekdays);
+        }
+    }
+
     private void validateCategories(List<CategoryEntity> found, List<UUID> requestedIds, UUID userId) {
         if (found.size() != requestedIds.size()) {
             throw new EntityNotFoundException("Một hoặc nhiều category không tồn tại");
@@ -126,6 +152,23 @@ public class HabitServiceImpl implements HabitService {
                 .allMatch(c -> c.getUser() == null || c.getUser().getId().equals(userId));
         if (!allBelongToUser) {
             throw new ForbiddenException("Category không thuộc về user này");
+        }
+    }
+
+    private void validateScheduleRequest(HabitScheduleRequest request) {
+        if (request.endDate() != null && request.endDate().isBefore(request.startDate())) {
+            throw new IllegalArgumentException("End date cannot be before start date");
+        }
+
+        if (request.scheduleType() == ScheduleType.WEEKLY) {
+            if (request.weekdays() == null || request.weekdays().isEmpty()) {
+                throw new IllegalArgumentException("Weekdays must be provided for weekly schedule");
+            }
+            boolean invalid = request.weekdays().stream()
+                    .anyMatch(day -> day == null || day < 0 || day > 6);
+            if (invalid) {
+                throw new IllegalArgumentException("Weekdays must be between 0 and 6");
+            }
         }
     }
 }
