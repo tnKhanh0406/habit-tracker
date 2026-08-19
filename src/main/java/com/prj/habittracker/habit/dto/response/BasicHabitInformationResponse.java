@@ -12,5 +12,6 @@ public record BasicHabitInformationResponse(
         String color,
         String icon,
         HabitDifficulty difficulty,
-        List<UUID> categories
+        List<CategoryResponse> categories,
+        HabitTargetResponse target
 ) {}

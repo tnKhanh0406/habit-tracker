@@ -4,7 +4,9 @@ import com.prj.habittracker.common.exception.ForbiddenException;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
 import com.prj.habittracker.habit.dto.request.CreateHabitWithNameRequest;
 import com.prj.habittracker.habit.dto.response.BasicHabitInformationResponse;
+import com.prj.habittracker.habit.dto.response.CategoryResponse;
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
+import com.prj.habittracker.habit.dto.response.HabitTargetResponse;
 import com.prj.habittracker.habit.entity.*;
 import com.prj.habittracker.habit.mapper.HabitSummaryMapper;
 import com.prj.habittracker.habit.repository.*;
@@ -92,6 +94,18 @@ public class HabitServiceImpl implements HabitService {
                 })
                 .toList();
         habitCategoryRepository.saveAll(newLinks);
+
+        List<CategoryResponse> categoryResponses = categories.stream()
+                .map(c -> new CategoryResponse(c.getId(), c.getName()))
+                .toList();
+
+        HabitTargetEntity target = habitTargetRepository.findByHabitId(habitId)
+                .orElseThrow(EntityNotFoundException::new);
+
+        target.setUnit(request.targetUnit());
+        target.setValue(request.targetValue());
+        habitTargetRepository.save(target);
+
         return new BasicHabitInformationResponse(
                 habit.getId(),
                 habit.getName(),
@@ -99,7 +113,8 @@ public class HabitServiceImpl implements HabitService {
                 habit.getColor(),
                 habit.getIcon(),
                 habit.getDifficulty(),
-                request.categoryIds()
+                categoryResponses,
+                new HabitTargetResponse(target.getValue(), target.getUnit())
         );
     }
 
@@ -108,7 +123,7 @@ public class HabitServiceImpl implements HabitService {
             throw new EntityNotFoundException("Một hoặc nhiều category không tồn tại");
         }
         boolean allBelongToUser = found.stream()
-                .allMatch(c -> c.getUser().getId().equals(userId));
+                .allMatch(c -> c.getUser() == null || c.getUser().getId().equals(userId));
         if (!allBelongToUser) {
             throw new ForbiddenException("Category không thuộc về user này");
         }
