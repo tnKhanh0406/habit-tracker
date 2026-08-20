@@ -12,6 +12,7 @@ import com.prj.habittracker.habit.dto.response.HabitTargetResponse;
 import com.prj.habittracker.habit.entity.*;
 import com.prj.habittracker.habit.mapper.HabitSummaryMapper;
 import com.prj.habittracker.habit.repository.*;
+import com.prj.habittracker.habit.service.HabitScheduleService;
 import com.prj.habittracker.habit.service.HabitService;
 import com.prj.habittracker.user.entity.UserEntity;
 import com.prj.habittracker.user.repository.UserRepository;
@@ -23,7 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +41,7 @@ public class HabitServiceImpl implements HabitService {
     private final CategoryRepository categoryRepository;
     private final HabitCategoryRepository habitCategoryRepository;
     private final HabitSummaryMapper habitSummaryMapper;
+    private final HabitScheduleService habitScheduleService;
 
     private UserEntity getCurrentUser() {
         UUID id = UUID.fromString("927b1ae6-62fd-4298-8265-1ded965cb274");
@@ -68,7 +73,37 @@ public class HabitServiceImpl implements HabitService {
 
     @Override
     public List<HabitSummaryResponse> getAllHabits() {
-        return habitRepository.getAllHabits(getCurrentUser().getId(), LocalDate.now());
+        LocalDate today = LocalDate.now();
+        List<HabitSummaryResponse> habits = habitRepository.getAllHabits(getCurrentUser().getId(), today);
+
+        if (habits.isEmpty()) {
+            return habits;
+        }
+
+        List<UUID> habitIds = habits.stream().map(HabitSummaryResponse::id).toList();
+
+        Map<UUID, HabitScheduleEntity> scheduleByHabitId = habitScheduleRepository
+                .findAllByHabitIds(habitIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        s -> s.getHabit().getId(),
+                        Function.identity()
+                ));
+
+        return habits.stream()
+                .map(habit -> {
+                    HabitScheduleEntity schedule = scheduleByHabitId.get(habit.id());
+                    boolean isScheduled = schedule != null && habitScheduleService.isHabitScheduled(schedule, today);
+
+                    return new HabitSummaryResponse(
+                            habit.id(), habit.name(), habit.icon(), habit.color(), habit.status(),
+                            habit.targetUnit(), habit.targetValue(),
+                            habit.progress() != null ? habit.progress() : BigDecimal.ZERO,
+                            habit.completed() != null ? habit.completed() : false,
+                            isScheduled
+                    );
+                })
+                .toList();
     }
 
     @Override

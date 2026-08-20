@@ -22,7 +22,8 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
             t.unit,
             t.value,
             c.progress,
-            CASE WHEN c.id IS NOT NULL THEN c.completed ELSE false END
+            CASE WHEN c.id IS NOT NULL THEN c.completed ELSE false END,
+            true
         )
         FROM HabitEntity h
         JOIN HabitTargetEntity t ON h.id = t.habit.id

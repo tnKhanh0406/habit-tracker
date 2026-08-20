@@ -14,10 +14,12 @@ public record HabitSummaryResponse(
         String targetUnit,
         BigDecimal targetValue,
         BigDecimal progress,
-        Boolean completed
+        Boolean completed,
+        Boolean isScheduledToday
 ) {
     public HabitSummaryResponse {
         progress = progress != null ? progress : BigDecimal.ZERO;
         completed = completed != null ? completed : false;
+        isScheduledToday = isScheduledToday != null ? isScheduledToday : true;
     }
 }
