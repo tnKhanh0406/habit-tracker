@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
@@ -31,4 +32,12 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
         WHERE h.user.id  = :userId
     """)
     List<HabitSummaryResponse> getAllHabits(UUID userId, LocalDate date);
+
+    @Query("""
+        SELECT h
+        FROM HabitEntity h
+        JOIN FETCH HabitTargetEntity t ON h.id = t.habit.id
+        WHERE h.id = :habitId
+    """)
+    Optional<HabitEntity> findByIdWithTarget(UUID habitId);
 }

@@ -48,6 +48,9 @@ public class HabitEntity {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    private HabitTargetEntity target;
+
     @PrePersist
     protected void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();
