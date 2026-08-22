@@ -48,8 +48,17 @@ public class HabitEntity {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "habit", cascade = CascadeType.ALL, orphanRemoval = true)
     private HabitTargetEntity target;
+
+    @OneToOne(mappedBy = "habit", cascade = CascadeType.ALL, orphanRemoval = true)
+    private HabitScheduleEntity schedule;
+
+    @Column(nullable = false)
+    private Integer currentStreak = 0;
+
+    @Column(nullable = false)
+    private Integer longestStreak = 0;
 
     @PrePersist
     protected void onCreate() {

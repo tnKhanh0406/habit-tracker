@@ -24,7 +24,8 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
             t.value,
             c.progress,
             CASE WHEN c.id IS NOT NULL THEN c.completed ELSE false END,
-            true
+            true,
+            h.currentStreak
         )
         FROM HabitEntity h
         JOIN HabitTargetEntity t ON h.id = t.habit.id
@@ -36,7 +37,8 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
     @Query("""
         SELECT h
         FROM HabitEntity h
-        JOIN FETCH HabitTargetEntity t ON h.id = t.habit.id
+        JOIN FETCH h.target t
+        JOIN FETCH h.schedule s
         WHERE h.id = :habitId
     """)
     Optional<HabitEntity> findByIdWithTarget(UUID habitId);

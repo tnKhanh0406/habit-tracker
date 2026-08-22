@@ -23,7 +23,8 @@ public class HabitSummaryMapper {
                 target.getValue(),
                 checkin != null ? checkin.getProgress() : null,
                 checkin != null ? checkin.getCompleted() : null,
-                true
+                true,
+                habit.getCurrentStreak()
         );
     }
 }

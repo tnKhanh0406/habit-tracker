@@ -1,0 +1,3 @@
+ALTER TABLE habits
+ADD COLUMN current_streak INT NOT NULL DEFAULT 0,
+ADD COLUMN longest_streak INT NOT NULL DEFAULT 0;

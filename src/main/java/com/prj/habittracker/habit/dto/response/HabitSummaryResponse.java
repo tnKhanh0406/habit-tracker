@@ -15,7 +15,8 @@ public record HabitSummaryResponse(
         BigDecimal targetValue,
         BigDecimal progress,
         Boolean completed,
-        Boolean isScheduledToday
+        Boolean isScheduledToday,
+        Integer currentStreak
 ) {
     public HabitSummaryResponse {
         progress = progress != null ? progress : BigDecimal.ZERO;

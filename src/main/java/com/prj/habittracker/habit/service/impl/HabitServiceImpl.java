@@ -100,7 +100,8 @@ public class HabitServiceImpl implements HabitService {
                             habit.targetUnit(), habit.targetValue(),
                             habit.progress() != null ? habit.progress() : BigDecimal.ZERO,
                             habit.completed() != null ? habit.completed() : false,
-                            isScheduled
+                            isScheduled,
+                            habit.currentStreak()
                     );
                 })
                 .toList();
