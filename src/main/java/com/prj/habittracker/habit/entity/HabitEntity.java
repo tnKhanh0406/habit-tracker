@@ -1,6 +1,6 @@
 package com.prj.habittracker.habit.entity;
 
-import com.prj.habittracker.common.enums.HabitDifficulty;
+import com.prj.habittracker.common.enums.Difficulty;
 import com.prj.habittracker.common.enums.HabitStatus;
 import com.prj.habittracker.user.entity.UserEntity;
 import jakarta.persistence.*;
@@ -33,7 +33,7 @@ public class HabitEntity {
     private String icon = "brain";
 
     @Enumerated(EnumType.STRING)
-    private HabitDifficulty difficulty = HabitDifficulty.EASY;
+    private Difficulty difficulty = Difficulty.EASY;
 
     @Enumerated(EnumType.STRING)
     private HabitStatus status = HabitStatus.ACTIVE;

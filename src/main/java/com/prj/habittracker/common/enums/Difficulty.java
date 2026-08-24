@@ -1,6 +1,6 @@
 package com.prj.habittracker.common.enums;
 
-public enum HabitDifficulty {
+public enum Difficulty {
     TRIVIAL,
     EASY,
     MEDIUM,

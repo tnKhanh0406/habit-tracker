@@ -4,6 +4,7 @@ import com.prj.habittracker.category.entity.CategoryEntity;
 import com.prj.habittracker.category.repository.CategoryRepository;
 import com.prj.habittracker.common.enums.ScheduleType;
 import com.prj.habittracker.common.exception.ForbiddenException;
+import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
 import com.prj.habittracker.habit.dto.request.CreateHabitWithNameRequest;
 import com.prj.habittracker.habit.dto.request.HabitScheduleRequest;
@@ -16,8 +17,6 @@ import com.prj.habittracker.habit.mapper.HabitSummaryMapper;
 import com.prj.habittracker.habit.repository.*;
 import com.prj.habittracker.habit.service.HabitScheduleService;
 import com.prj.habittracker.habit.service.HabitService;
-import com.prj.habittracker.user.entity.UserEntity;
-import com.prj.habittracker.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,23 +38,18 @@ public class HabitServiceImpl implements HabitService {
     private final HabitScheduleRepository habitScheduleRepository;
     private final HabitTargetRepository habitTargetRepository;
     private final HabitCheckinRepository habitCheckinRepository;
-    private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final HabitCategoryRepository habitCategoryRepository;
     private final HabitSummaryMapper habitSummaryMapper;
     private final HabitScheduleService habitScheduleService;
-
-    private UserEntity getCurrentUser() {
-        UUID id = UUID.fromString("927b1ae6-62fd-4298-8265-1ded965cb274");
-        return userRepository.findById(id).get();
-    }
+    private final CurrentUserService currentUserService;
 
     @Override
     @Transactional
     public HabitSummaryResponse createHabitWithName(CreateHabitWithNameRequest request) {
         HabitEntity habitEntity = new HabitEntity();
         habitEntity.setName(request.name());
-        habitEntity.setUser(getCurrentUser());
+        habitEntity.setUser(currentUserService.getCurrentUser());
         HabitEntity saved = habitRepository.save(habitEntity);
 
         HabitScheduleEntity habitScheduleEntity = new HabitScheduleEntity();
@@ -76,7 +70,7 @@ public class HabitServiceImpl implements HabitService {
     @Override
     public List<HabitSummaryResponse> getAllHabits() {
         LocalDate today = LocalDate.now();
-        List<HabitSummaryResponse> habits = habitRepository.getAllHabits(getCurrentUser().getId(), today);
+        List<HabitSummaryResponse> habits = habitRepository.getAllHabits(currentUserService.getCurrentUser().getId(), today);
 
         if (habits.isEmpty()) {
             return habits;
@@ -120,7 +114,7 @@ public class HabitServiceImpl implements HabitService {
         habit.setDifficulty(request.difficulty());
 
         List<CategoryEntity> categories = categoryRepository.findAllById(request.categoryIds());
-        validateCategories(categories, request.categoryIds(), getCurrentUser().getId());
+        validateCategories(categories, request.categoryIds(), currentUserService.getCurrentUser().getId());
 
         habitCategoryRepository.deleteAll(habitCategoryRepository.findAllByHabitId(habitId));
         habitCategoryRepository.flush();
