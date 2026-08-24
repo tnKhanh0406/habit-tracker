@@ -1,5 +1,6 @@
 package com.prj.habittracker.habit.entity;
 
+import com.prj.habittracker.category.entity.CategoryEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

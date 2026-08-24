@@ -1,5 +1,7 @@
 package com.prj.habittracker.habit.service.impl;
 
+import com.prj.habittracker.category.entity.CategoryEntity;
+import com.prj.habittracker.category.repository.CategoryRepository;
 import com.prj.habittracker.common.enums.ScheduleType;
 import com.prj.habittracker.common.exception.ForbiddenException;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;

@@ -1,4 +1,4 @@
-package com.prj.habittracker.habit.entity;
+package com.prj.habittracker.category.entity;
 
 import com.prj.habittracker.user.entity.UserEntity;
 import jakarta.persistence.*;
