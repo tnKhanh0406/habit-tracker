@@ -60,11 +60,11 @@ public class HabitServiceImpl implements HabitService {
         habitTargetEntity.setHabit(saved);
         habitTargetRepository.save(habitTargetEntity);
 
-        HabitCheckinEntity habitCheckinEntity = new HabitCheckinEntity();
-        habitTargetEntity.setHabit(saved);
-        habitCheckinRepository.save(habitCheckinEntity);
+//        HabitCheckinEntity habitCheckinEntity = new HabitCheckinEntity();
+//        habitCheckinEntity.setHabit(saved);
+//        habitCheckinRepository.save(habitCheckinEntity);
 
-        return habitSummaryMapper.toResponse(saved, habitTargetEntity, habitCheckinEntity);
+        return habitSummaryMapper.toResponse(saved, habitTargetEntity, null);
     }
 
     @Override

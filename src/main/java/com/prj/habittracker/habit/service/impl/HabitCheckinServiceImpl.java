@@ -42,7 +42,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         boolean newCompleted = newProgress.compareTo(habit.getTarget().getValue()) >= 0;
         checkin.setCompleted(newCompleted);
         updateStreaks(habit, oldCompleted, newCompleted);
-        return habitCheckinMapper.toHabitCheckinResponse(checkin, habit.getTarget());
+        return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
     }
 
     @Transactional
@@ -59,7 +59,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         checkin.setCompleted(newCompleted);
         updateStreaks(habit, oldCompleted, newCompleted);
         habitCheckinRepository.save(checkin);
-        return habitCheckinMapper.toHabitCheckinResponse(checkin, habit.getTarget());
+        return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
     }
 
     @Transactional
@@ -78,7 +78,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         checkin.setCompleted(newCompleted);
         updateStreaks(habit, oldCompleted, newCompleted);
         habitCheckinRepository.save(checkin);
-        return habitCheckinMapper.toHabitCheckinResponse(checkin, habit.getTarget());
+        return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
     }
 
     private void updateStreaks(HabitEntity habit, boolean oldCompleted, boolean newCompleted) {

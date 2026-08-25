@@ -1,0 +1,11 @@
+CREATE TABLE rewards (
+    id UUID PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    icon VARCHAR(50) DEFAULT 'gift',
+    cost INT NOT NULL DEFAULT 10,
+    type VARCHAR(20) NOT NULL DEFAULT 'CUSTOM',
+    user_id UUID NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
