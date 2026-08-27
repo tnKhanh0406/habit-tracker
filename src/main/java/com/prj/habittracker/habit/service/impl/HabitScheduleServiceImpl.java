@@ -1,17 +1,52 @@
 package com.prj.habittracker.habit.service.impl;
 
+import com.prj.habittracker.common.enums.ScheduleType;
+import com.prj.habittracker.habit.dto.request.HabitScheduleRequest;
 import com.prj.habittracker.habit.entity.HabitScheduleEntity;
+import com.prj.habittracker.habit.entity.HabitScheduleWeekdayEntity;
+import com.prj.habittracker.habit.repository.HabitScheduleRepository;
 import com.prj.habittracker.habit.service.HabitScheduleService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class HabitScheduleServiceImpl implements HabitScheduleService {
+
+    private final HabitScheduleRepository habitScheduleRepository;
+
+    @Override
+    @Transactional
+    public void updateHabitSchedule(UUID habitId, HabitScheduleRequest request) {
+        HabitScheduleEntity schedule = habitScheduleRepository.findByHabitId(habitId)
+                .orElseThrow(EntityNotFoundException::new);
+        validateScheduleRequest(request);
+        schedule.setScheduleType(request.scheduleType());
+        schedule.setIntervalValue(request.intervalValue());
+        schedule.setStartDate(request.startDate());
+        schedule.setEndDate(request.endDate());
+
+        if (request.scheduleType() == ScheduleType.WEEKLY) {
+            List<HabitScheduleWeekdayEntity> weekdays = request.weekdays().stream()
+                    .map(day -> {
+                        HabitScheduleWeekdayEntity weekday = new HabitScheduleWeekdayEntity();
+                        weekday.setHabitSchedule(schedule);
+                        weekday.setWeekday(day);
+                        return weekday;
+                    }).toList();
+            schedule.getWeekdays().clear();
+            schedule.getWeekdays().addAll(weekdays);
+        }
+    }
+
     @Override
     public boolean isHabitScheduled(HabitScheduleEntity schedule, LocalDate date) {
         if (date.isBefore(schedule.getStartDate())) {
@@ -64,5 +99,22 @@ public class HabitScheduleServiceImpl implements HabitScheduleService {
             return false;
         }
         return date.getDayOfMonth() == targetDay;
+    }
+
+    private void validateScheduleRequest(HabitScheduleRequest request) {
+        if (request.endDate() != null && request.endDate().isBefore(request.startDate())) {
+            throw new IllegalArgumentException("End date cannot be before start date");
+        }
+
+        if (request.scheduleType() == ScheduleType.WEEKLY) {
+            if (request.weekdays() == null || request.weekdays().isEmpty()) {
+                throw new IllegalArgumentException("Weekdays must be provided for weekly schedule");
+            }
+            boolean invalid = request.weekdays().stream()
+                    .anyMatch(day -> day == null || day < 0 || day > 6);
+            if (invalid) {
+                throw new IllegalArgumentException("Weekdays must be between 0 and 6");
+            }
+        }
     }
 }

@@ -13,5 +13,4 @@ public interface HabitService {
     HabitSummaryResponse createHabitWithName(CreateHabitWithNameRequest request);
     List<HabitSummaryResponse> getAllHabits();
     BasicHabitInformationResponse updateBasicHabitInformation(BasicHabitInformationRequest request, UUID habitId);
-    void updateHabitSchedule(UUID habitId, HabitScheduleRequest request);
 }

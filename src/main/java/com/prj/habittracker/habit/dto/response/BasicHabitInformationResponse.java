@@ -13,5 +13,6 @@ public record BasicHabitInformationResponse(
         String icon,
         Difficulty difficulty,
         List<CategoryResponse> categories,
-        HabitTargetResponse target
+        HabitTargetResponse target,
+        Integer streaks
 ) {}

@@ -1,5 +1,6 @@
 package com.prj.habittracker.habit.service.impl;
 
+import com.prj.habittracker.common.enums.CompletionSource;
 import com.prj.habittracker.common.exception.InvalidHabitCheckinException;
 import com.prj.habittracker.habit.dto.request.AddCheckinProgressRequest;
 import com.prj.habittracker.habit.dto.request.UpdateCheckinCompletionRequest;
@@ -11,6 +12,7 @@ import com.prj.habittracker.habit.mapper.HabitCheckinMapper;
 import com.prj.habittracker.habit.repository.HabitCheckinRepository;
 import com.prj.habittracker.habit.repository.HabitRepository;
 import com.prj.habittracker.habit.service.HabitCheckinService;
+import com.prj.habittracker.habit.service.HabitStreakService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,7 +29,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
     private final HabitCheckinRepository habitCheckinRepository;
     private final HabitRepository habitRepository;
     private final HabitCheckinMapper habitCheckinMapper;
-    private final HabitScheduleServiceImpl habitScheduleServiceImpl;
+    private final HabitStreakService habitStreakService;
 
     @Transactional
     @Override
@@ -41,7 +43,12 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         boolean oldCompleted = checkin.getCompleted();
         boolean newCompleted = newProgress.compareTo(habit.getTarget().getValue()) >= 0;
         checkin.setCompleted(newCompleted);
-        updateStreaks(habit, oldCompleted, newCompleted);
+        if (newCompleted) {
+            checkin.setCompletionSource(CompletionSource.PROGRESS);
+        } else {
+            checkin.setCompletionSource(null);
+        }
+        habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
         return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
     }
 
@@ -57,7 +64,12 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         boolean newCompleted = newProgress.compareTo(habit.getTarget().getValue()) >= 0;
         checkin.setProgress(newProgress);
         checkin.setCompleted(newCompleted);
-        updateStreaks(habit, oldCompleted, newCompleted);
+        if (newCompleted) {
+            checkin.setCompletionSource(CompletionSource.PROGRESS);
+        } else {
+            checkin.setCompletionSource(null);
+        }
+        habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
         habitCheckinRepository.save(checkin);
         return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
     }
@@ -76,22 +88,14 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
             throw new InvalidHabitCheckinException("Cannot mark habit incomplete when progress has reached target");
         }
         checkin.setCompleted(newCompleted);
-        updateStreaks(habit, oldCompleted, newCompleted);
+        if (newCompleted) {
+            checkin.setCompletionSource(CompletionSource.MANUAL);
+        } else {
+            checkin.setCompletionSource(null);
+        }
+        habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
         habitCheckinRepository.save(checkin);
         return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
-    }
-
-    private void updateStreaks(HabitEntity habit, boolean oldCompleted, boolean newCompleted) {
-        Integer currentStreak = habit.getCurrentStreak();
-        if (!oldCompleted && newCompleted) {
-            currentStreak++;
-        } else if (oldCompleted && !newCompleted) {
-            currentStreak = Math.max(0, currentStreak - 1);
-        }
-        habit.setCurrentStreak(currentStreak);
-        if (currentStreak > habit.getLongestStreak()) {
-            habit.setLongestStreak(currentStreak);
-        }
     }
 
     private HabitCheckinEntity getOrCreateTodayCheckin(HabitEntity habit, LocalDate today) {
@@ -105,6 +109,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         checkin.setCheckinDate(today);
         checkin.setProgress(BigDecimal.ZERO);
         checkin.setCompleted(false);
+        checkin.setCompletionSource(null);
         return checkin;
     }
 }

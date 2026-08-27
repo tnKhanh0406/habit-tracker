@@ -1,5 +1,6 @@
 package com.prj.habittracker.habit.entity;
 
+import com.prj.habittracker.common.enums.CompletionSource;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -40,6 +41,10 @@ public class HabitCheckinEntity {
 
     @Column(nullable = false)
     private Boolean completed = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "completion_source", length = 20)
+    private CompletionSource completionSource;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;

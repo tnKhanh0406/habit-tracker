@@ -2,12 +2,11 @@ package com.prj.habittracker.habit.service.impl;
 
 import com.prj.habittracker.category.entity.CategoryEntity;
 import com.prj.habittracker.category.repository.CategoryRepository;
-import com.prj.habittracker.common.enums.ScheduleType;
+import com.prj.habittracker.common.enums.CompletionSource;
 import com.prj.habittracker.common.exception.ForbiddenException;
 import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
 import com.prj.habittracker.habit.dto.request.CreateHabitWithNameRequest;
-import com.prj.habittracker.habit.dto.request.HabitScheduleRequest;
 import com.prj.habittracker.habit.dto.response.BasicHabitInformationResponse;
 import com.prj.habittracker.habit.dto.response.CategoryResponse;
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
@@ -17,6 +16,7 @@ import com.prj.habittracker.habit.mapper.HabitSummaryMapper;
 import com.prj.habittracker.habit.repository.*;
 import com.prj.habittracker.habit.service.HabitScheduleService;
 import com.prj.habittracker.habit.service.HabitService;
+import com.prj.habittracker.habit.service.HabitStreakService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,12 +37,13 @@ public class HabitServiceImpl implements HabitService {
     private final HabitRepository habitRepository;
     private final HabitScheduleRepository habitScheduleRepository;
     private final HabitTargetRepository habitTargetRepository;
-    private final HabitCheckinRepository habitCheckinRepository;
     private final CategoryRepository categoryRepository;
     private final HabitCategoryRepository habitCategoryRepository;
     private final HabitSummaryMapper habitSummaryMapper;
     private final HabitScheduleService habitScheduleService;
+    private final HabitStreakService habitStreakService;
     private final CurrentUserService currentUserService;
+    private final HabitCheckinRepository habitCheckinRepository;
 
     @Override
     @Transactional
@@ -59,10 +60,6 @@ public class HabitServiceImpl implements HabitService {
         HabitTargetEntity habitTargetEntity = new HabitTargetEntity();
         habitTargetEntity.setHabit(saved);
         habitTargetRepository.save(habitTargetEntity);
-
-//        HabitCheckinEntity habitCheckinEntity = new HabitCheckinEntity();
-//        habitCheckinEntity.setHabit(saved);
-//        habitCheckinRepository.save(habitCheckinEntity);
 
         return habitSummaryMapper.toResponse(saved, habitTargetEntity, null);
     }
@@ -135,6 +132,12 @@ public class HabitServiceImpl implements HabitService {
 
         HabitTargetEntity target = habitTargetRepository.findByHabitId(habitId)
                 .orElseThrow(EntityNotFoundException::new);
+        BigDecimal oldTargetValue = target.getValue();
+        BigDecimal newTargetValue = request.targetValue();
+
+        if (oldTargetValue.compareTo(newTargetValue) != 0) {
+            updateTodayCheckinAfterTargetChange(habit, newTargetValue);
+        }
 
         target.setUnit(request.targetUnit());
         target.setValue(request.targetValue());
@@ -148,31 +151,32 @@ public class HabitServiceImpl implements HabitService {
                 habit.getIcon(),
                 habit.getDifficulty(),
                 categoryResponses,
-                new HabitTargetResponse(target.getValue(), target.getUnit())
+                new HabitTargetResponse(target.getValue(), target.getUnit()),
+                habit.getCurrentStreak()
         );
     }
 
-    @Override
-    @Transactional
-    public void updateHabitSchedule(UUID habitId, HabitScheduleRequest request) {
-        HabitScheduleEntity schedule = habitScheduleRepository.findByHabitId(habitId)
-                .orElseThrow(EntityNotFoundException::new);
-        validateScheduleRequest(request);
-        schedule.setScheduleType(request.scheduleType());
-        schedule.setIntervalValue(request.intervalValue());
-        schedule.setStartDate(request.startDate());
-        schedule.setEndDate(request.endDate());
 
-        if (request.scheduleType() == ScheduleType.WEEKLY) {
-            List<HabitScheduleWeekdayEntity> weekdays = request.weekdays().stream()
-                    .map(day -> {
-                        HabitScheduleWeekdayEntity weekday = new HabitScheduleWeekdayEntity();
-                        weekday.setHabitSchedule(schedule);
-                        weekday.setWeekday(day);
-                        return weekday;
-                    }).toList();
-            schedule.getWeekdays().clear();
-            schedule.getWeekdays().addAll(weekdays);
+    private void updateTodayCheckinAfterTargetChange(HabitEntity habit, BigDecimal newTargetValue) {
+        LocalDate today = LocalDate.now();
+        HabitCheckinEntity checkin = habitCheckinRepository.findByHabitIdAndCheckinDate(habit.getId(), today)
+                .orElse(null);
+        if (checkin != null) {
+            boolean oldCompleted = checkin.getCompleted();
+            boolean reachNewTarget = checkin.getProgress().compareTo(newTargetValue) >= 0;
+            CompletionSource source = checkin.getCompletionSource();
+            boolean newCompleted;
+            if (source == CompletionSource.MANUAL) {
+                newCompleted = true;
+            } else if (reachNewTarget) {
+                newCompleted = true;
+                checkin.setCompletionSource(CompletionSource.PROGRESS);
+            } else {
+                newCompleted = false;
+                checkin.setCompletionSource(null);
+            }
+            checkin.setCompleted(newCompleted);
+            habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
         }
     }
 
@@ -187,20 +191,21 @@ public class HabitServiceImpl implements HabitService {
         }
     }
 
-    private void validateScheduleRequest(HabitScheduleRequest request) {
-        if (request.endDate() != null && request.endDate().isBefore(request.startDate())) {
-            throw new IllegalArgumentException("End date cannot be before start date");
-        }
 
-        if (request.scheduleType() == ScheduleType.WEEKLY) {
-            if (request.weekdays() == null || request.weekdays().isEmpty()) {
-                throw new IllegalArgumentException("Weekdays must be provided for weekly schedule");
-            }
-            boolean invalid = request.weekdays().stream()
-                    .anyMatch(day -> day == null || day < 0 || day > 6);
-            if (invalid) {
-                throw new IllegalArgumentException("Weekdays must be between 0 and 6");
-            }
-        }
-    }
 }
+//Case 1: progress < oldTarget, oldCompleted = true
+//After update:
+    // progress < newTarget, newCompleted = true, streak unchanged
+    // progress >= newTarget, newCompleted = true, streak unchanged
+
+//Case 2: progress < oldTarget, oldCompleted = false
+//After update:
+    // progress < newTarget, newCompleted = false streak unchanged
+    // progress >= newTarget, newCompleted = true, streak++
+
+//Case 3: progress >= oldTarget, oldCompleted = true
+//After update:
+    // progress < newTarget, newCompleted = false, streak-- (streak >= 0)
+    // progress >= newTarget, newCompleted = true, streak unchanged
+
+//Case 4: progress >= oldTarget, oldCompleted = false - invalid case, should not happen
