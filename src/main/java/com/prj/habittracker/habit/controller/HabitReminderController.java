@@ -34,6 +34,11 @@ public class HabitReminderController {
         return habitReminderService.updateHabitReminder(reminderId, request);
     }
 
+    @PutMapping("/habit/{habitId}")
+    public List<HabitReminderResponse> updateHabitReminders(@PathVariable ("habitId") UUID habitId, @RequestBody @Valid List<HabitReminderRequest> requests) {
+        return habitReminderService.updateHabitReminders(habitId, requests);
+    }
+
     @DeleteMapping("/{reminderId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteHabitReminder(@PathVariable ("reminderId") UUID reminderId) {

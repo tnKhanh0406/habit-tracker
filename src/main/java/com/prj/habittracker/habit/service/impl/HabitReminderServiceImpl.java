@@ -12,8 +12,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +48,41 @@ public class HabitReminderServiceImpl implements HabitReminderService {
         reminder.setEnabled(request.enabled());
         HabitReminderEntity updated = habitReminderRepository.save(reminder);
         return habitReminderMapper.toResponse(updated);
+    }
+
+    @Override
+    public List<HabitReminderResponse> updateHabitReminders(UUID habitId, List<HabitReminderRequest> requests) {
+        List<HabitReminderEntity> reminders = habitReminderRepository.findAllByHabit_Id(habitId);
+        HabitEntity habit = habitRepository.findById(habitId)
+                .orElseThrow(EntityNotFoundException::new);
+        Map<UUID, HabitReminderEntity> reminderMap = reminders.stream()
+                .collect(Collectors.toMap(HabitReminderEntity::getId, r -> r));
+        Set<UUID> requestIds = new HashSet<>();
+        List<HabitReminderEntity> result = new ArrayList<>();
+        for (HabitReminderRequest request : requests) {
+            if (request.id() != null) {
+                HabitReminderEntity reminder = reminderMap.get(request.id());
+                if (reminder == null) {
+                    throw new EntityNotFoundException("Habit reminder not found: " + request.id());
+                }
+                reminder.setReminderTime(request.reminderTime());
+                reminder.setEnabled(request.enabled());
+                result.add(reminder);
+                requestIds.add(request.id());
+            } else {
+                HabitReminderEntity newReminder = new HabitReminderEntity();
+                newReminder.setHabit(habit);
+                newReminder.setReminderTime(request.reminderTime());
+                newReminder.setEnabled(request.enabled());
+                result.add(newReminder);
+            }
+        }
+        List<HabitReminderEntity> deletedReminders = reminders.stream()
+                .filter(reminder -> reminder.getId() != null && !requestIds.contains(reminder.getId()))
+                .toList();
+        habitReminderRepository.deleteAll(deletedReminders);
+        List<HabitReminderEntity> savedReminders = habitReminderRepository.saveAll(result);
+        return savedReminders.stream().map(habitReminderMapper::toResponse).collect(Collectors.toList());
     }
 
     @Override

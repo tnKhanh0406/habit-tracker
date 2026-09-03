@@ -10,5 +10,6 @@ public interface HabitReminderService {
     List<HabitReminderResponse> getHabitReminders(UUID habitId);
     HabitReminderResponse createHabitReminder(UUID habitId, HabitReminderRequest request);
     HabitReminderResponse updateHabitReminder(UUID reminderId, HabitReminderRequest request);
+    List<HabitReminderResponse> updateHabitReminders(UUID habitId, List<HabitReminderRequest> requests);
     void deleteHabitReminder(UUID reminderId);
 }

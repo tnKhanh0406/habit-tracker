@@ -56,7 +56,7 @@ public class RewardServiceImpl implements RewardService {
         reward.setDescription(request.description());
         reward.setIcon(request.icon());
         reward.setName(request.name());
-        reward.setType(request.type());
+        reward.setType(request.type() == null ? RewardType.CUSTOM : request.type());
         RewardEntity updated = rewardRepository.save(reward);
         return rewardMapper.toResponse(updated);
     }

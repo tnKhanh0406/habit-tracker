@@ -20,4 +20,6 @@ public interface HabitReminderRepository extends JpaRepository<HabitReminderEnti
         WHERE hr.habit.id = :habitId
     """)
     List<HabitReminderResponse> findAllByHabitId(UUID habitId);
+
+    List<HabitReminderEntity> findAllByHabit_Id(UUID habitId);
 }
