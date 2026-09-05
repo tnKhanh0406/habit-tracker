@@ -14,8 +14,9 @@ public interface TodoRepository extends JpaRepository<TodoEntity, UUID> {
         SELECT t FROM TodoEntity t
         LEFT JOIN FETCH t.subtasks
         WHERE t.id = :id
+        AND t.user.id = :userId
     """)
-    Optional<TodoEntity> findByIdWithSubtasks(UUID id);
+    Optional<TodoEntity> findByIdAndUserIdWithSubtasks(UUID id, UUID userId);
 
     @EntityGraph(attributePaths = "subtasks")
     List<TodoEntity> findAllByUserId(UUID userId);

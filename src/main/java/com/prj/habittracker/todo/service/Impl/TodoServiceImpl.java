@@ -51,18 +51,33 @@ public class TodoServiceImpl implements TodoService {
 
     @Transactional
     @Override
+    public TodoSummaryResponse createTodo(UpdateTodoInformationRequest request) {
+        TodoEntity todo = new TodoEntity();
+        todo.setTitle(request.title());
+        todo.setDescription(request.description());
+        todo.setDueDate(request.dueDate());
+        todo.setDueTime(request.dueTime());
+        todo.setDifficulty(request.difficulty());
+        todo.setUser(currentUserService.getCurrentUser());
+        attachCategories(todo, request.categoryIds());
+        attachSubtasks(todo, request.subtasks());
+        TodoEntity savedTodo = todoRepository.save(todo);
+        return todoMapper.toResponse(savedTodo, savedTodo.getSubtasks());
+    }
+
+    @Transactional
+    @Override
     public TodoSummaryResponse updateTodoInformation(UUID todoId, UpdateTodoInformationRequest request) {
-        TodoEntity todo = todoRepository.findByIdWithSubtasks(todoId)
-                .orElseThrow(EntityNotFoundException::new);
+        TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Todo not found"));
         todo.setTitle(request.title());
         todo.setDescription(request.description());
         todo.setDueDate(request.dueDate());
         todo.setDueTime(request.dueTime());
         todo.setDifficulty(request.difficulty());
 
-        saveTodoCategories(todo, request.categoryIds());
-        saveTodoSubtasks(todo, request.subtasks());
-
+        updateTodoCategories(todo, request.categoryIds());
+        updateTodoSubtasks(todo, request.subtasks());
 
         todoRepository.saveAndFlush(todo);
         return todoMapper.toResponse(todo, todo.getSubtasks());
@@ -70,11 +85,39 @@ public class TodoServiceImpl implements TodoService {
 
     @Override
     public List<TodoSummaryResponse> getAllTodos() {
-        List<TodoEntity> todos = todoRepository.findAllByUserId(currentUserService.getCurrentUser().getId());
+        List<TodoEntity> todos = todoRepository.findAllByUserId(currentUserService.getCurrentUserId());
         return todos.stream().map(todo -> todoMapper.toResponse(todo, todo.getSubtasks())).toList();
     }
 
-    private void saveTodoCategories(TodoEntity todo, List<UUID> categoryIds) {
+    @Override
+    public void deleteTodo(UUID todoId) {
+        TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Todo not found"));
+        todoRepository.delete(todo);
+    }
+
+    private void attachCategories(TodoEntity todo, List<UUID> categoryIds) {
+        List<CategoryEntity> categories = categoryRepository.findAllById(categoryIds);
+        categories.forEach(category -> {
+            TodoCategoryEntity link = new TodoCategoryEntity();
+            link.setTodo(todo);
+            link.setCategory(category);
+            todo.getCategories().add(link);
+        });
+    }
+
+    private void attachSubtasks(TodoEntity todo, List<SubtaskRequest> requests) {
+        requests.forEach(request -> {
+            TodoSubtaskEntity subtask = new TodoSubtaskEntity();
+            subtask.setTitle(request.title());
+            subtask.setCompleted(request.completed());
+            subtask.setPosition(request.position());
+            subtask.setTodo(todo);
+            todo.getSubtasks().add(subtask);
+        });
+    }
+
+    private void updateTodoCategories(TodoEntity todo, List<UUID> categoryIds) {
         List<CategoryEntity> categories = categoryRepository.findAllById(categoryIds);
         todoCategoryRepository.deleteAll(todoCategoryRepository.findAllByTodoId(todo.getId()));
         todoCategoryRepository.flush();
@@ -89,7 +132,7 @@ public class TodoServiceImpl implements TodoService {
         todoCategoryRepository.saveAll(newLinks);
     }
 
-    private void saveTodoSubtasks(TodoEntity todo, List<SubtaskRequest> subtaskRequests) {
+    private void updateTodoSubtasks(TodoEntity todo, List<SubtaskRequest> subtaskRequests) {
         List<TodoSubtaskEntity> existingSubtasks = todo.getSubtasks();
         Map<UUID, TodoSubtaskEntity> existingSubtaskMap = existingSubtasks.stream()
                 .collect(Collectors.toMap(

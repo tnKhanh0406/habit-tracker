@@ -20,4 +20,8 @@ public class CurrentUserService {
         UUID userId = currentUserProvider.getCurrentUserId();
         return userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
     }
+
+    public UUID getCurrentUserId() {
+        return currentUserProvider.getCurrentUserId();
+    }
 }
