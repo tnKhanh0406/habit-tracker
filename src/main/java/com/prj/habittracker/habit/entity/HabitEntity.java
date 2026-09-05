@@ -45,9 +45,11 @@ public class HabitEntity {
     private UserEntity user;
 
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
     @OneToOne(mappedBy = "habit", cascade = CascadeType.ALL, orphanRemoval = true)

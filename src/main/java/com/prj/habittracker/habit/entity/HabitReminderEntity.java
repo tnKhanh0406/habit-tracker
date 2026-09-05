@@ -38,8 +38,10 @@ public class HabitReminderEntity {
     private boolean enabled = true;
 
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }
