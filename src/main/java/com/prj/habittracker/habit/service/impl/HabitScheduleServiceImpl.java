@@ -2,6 +2,7 @@ package com.prj.habittracker.habit.service.impl;
 
 import com.prj.habittracker.common.enums.ScheduleType;
 import com.prj.habittracker.habit.dto.request.HabitScheduleRequest;
+import com.prj.habittracker.habit.dto.response.HabitScheduleResponse;
 import com.prj.habittracker.habit.entity.HabitScheduleEntity;
 import com.prj.habittracker.habit.entity.HabitScheduleWeekdayEntity;
 import com.prj.habittracker.habit.repository.HabitScheduleRepository;
@@ -11,9 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,7 +28,7 @@ public class HabitScheduleServiceImpl implements HabitScheduleService {
 
     @Override
     @Transactional
-    public void updateHabitSchedule(UUID habitId, HabitScheduleRequest request) {
+    public boolean updateHabitSchedule(UUID habitId, HabitScheduleRequest request) {
         HabitScheduleEntity schedule = habitScheduleRepository.findByHabitId(habitId)
                 .orElseThrow(EntityNotFoundException::new);
         validateScheduleRequest(request);
@@ -45,6 +48,23 @@ public class HabitScheduleServiceImpl implements HabitScheduleService {
             schedule.getWeekdays().clear();
             schedule.getWeekdays().addAll(weekdays);
         }
+        return isHabitScheduled(schedule, LocalDate.now());
+    }
+
+    @Override
+    public HabitScheduleResponse getHabitSchedule(UUID habitId) {
+        HabitScheduleEntity schedule = habitScheduleRepository.findByHabitId(habitId)
+                .orElseThrow(() -> new EntityNotFoundException("Habit schedule not found for habitId: " + habitId));
+        return new HabitScheduleResponse(
+                schedule.getId(),
+                schedule.getScheduleType(),
+                schedule.getIntervalValue(),
+                schedule.getStartDate(),
+                schedule.getEndDate() != null ? schedule.getEndDate() : null,
+                schedule.getWeekdays().stream()
+                        .map(HabitScheduleWeekdayEntity::getWeekday)
+                        .toList()
+        );
     }
 
     @Override
@@ -55,6 +75,7 @@ public class HabitScheduleServiceImpl implements HabitScheduleService {
         if (schedule.getEndDate() != null && date.isAfter(schedule.getEndDate())) {
             return false;
         }
+
         return switch (schedule.getScheduleType()) {
             case DAILY -> isDaily(schedule, date);
             case WEEKLY -> isWeekly(schedule, date);
@@ -64,41 +85,60 @@ public class HabitScheduleServiceImpl implements HabitScheduleService {
     }
 
     private boolean isDaily(HabitScheduleEntity schedule, LocalDate date) {
-        long days = ChronoUnit.DAYS.between(schedule.getStartDate(), date);
+        long days = ChronoUnit.DAYS.between(
+                schedule.getStartDate(),
+                date
+        );
         return days % schedule.getIntervalValue() == 0;
     }
 
     private boolean isWeekly(HabitScheduleEntity schedule, LocalDate date) {
-        long weeks = ChronoUnit.WEEKS.between(schedule.getStartDate(), date);
+        LocalDate startWeek = schedule.getStartDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+
+        LocalDate currentWeek = date
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+
+        long weeks = ChronoUnit.WEEKS.between(startWeek, currentWeek);
+
         if (weeks % schedule.getIntervalValue() != 0) {
             return false;
         }
+
+        int weekday = date.getDayOfWeek().getValue() - 1;
+
         return schedule.getWeekdays().stream()
-                .anyMatch(day -> day.getWeekday() == date.getDayOfWeek().getValue() % 7);
+                .anyMatch(day -> day.getWeekday() == weekday);
     }
 
     private boolean isMonthly(HabitScheduleEntity schedule, LocalDate date) {
-        long months = ChronoUnit.MONTHS.between(schedule.getStartDate(), date);
+        YearMonth startMonth = YearMonth.from(schedule.getStartDate());
+        YearMonth currentMonth = YearMonth.from(date);
+
+        long months = ChronoUnit.MONTHS.between(startMonth, currentMonth);
+
         if (months % schedule.getIntervalValue() != 0) {
             return false;
         }
-        YearMonth currentMonth = YearMonth.from(date);
 
         int targetDay = Math.min(schedule.getStartDate().getDayOfMonth(), currentMonth.lengthOfMonth());
         return date.getDayOfMonth() == targetDay;
     }
 
     private boolean isYearly(HabitScheduleEntity schedule, LocalDate date) {
-        long years = ChronoUnit.YEARS.between(schedule.getStartDate(), date);
+        int years = date.getYear() - schedule.getStartDate().getYear();
         if (years % schedule.getIntervalValue() != 0) {
             return false;
         }
         int targetMonth = schedule.getStartDate().getMonthValue();
-        int targetDay = Math.min(schedule.getStartDate().getDayOfMonth(), date.lengthOfMonth());
-        if (date.getMonthValue() != targetMonth) {
-            return false;
-        }
-        return date.getDayOfMonth() == targetDay;
+        YearMonth targetYearMonth = YearMonth.of(date.getYear(), targetMonth);
+
+        int targetDay = Math.min(
+                schedule.getStartDate().getDayOfMonth(),
+                targetYearMonth.lengthOfMonth()
+        );
+
+        return date.getMonthValue() == targetMonth && date.getDayOfMonth() == targetDay;
     }
 
     private void validateScheduleRequest(HabitScheduleRequest request) {
@@ -115,6 +155,10 @@ public class HabitScheduleServiceImpl implements HabitScheduleService {
             if (invalid) {
                 throw new IllegalArgumentException("Weekdays must be between 0 and 6");
             }
+        }
+
+        if (request.intervalValue() == null || request.intervalValue() <= 0) {
+            throw new IllegalArgumentException("Interval value must be greater than 0");
         }
     }
 }
