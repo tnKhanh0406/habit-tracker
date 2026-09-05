@@ -6,6 +6,8 @@ import com.prj.habittracker.user.entity.UserEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -42,10 +44,10 @@ public class HabitEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @UpdateTimestamp
     private OffsetDateTime updatedAt;
 
     @OneToOne(mappedBy = "habit", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -59,16 +61,4 @@ public class HabitEntity {
 
     @Column(nullable = false)
     private Integer longestStreak = 0;
-
-    @PrePersist
-    protected void onCreate() {
-        OffsetDateTime now = OffsetDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
-    }
 }

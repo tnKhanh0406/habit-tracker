@@ -4,6 +4,7 @@ import com.prj.habittracker.common.enums.ScheduleType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ public class HabitScheduleEntity {
 
     private Integer intervalValue = 1;
 
+    @CreationTimestamp
     private LocalDate startDate;
     private LocalDate endDate;
 
@@ -38,9 +40,4 @@ public class HabitScheduleEntity {
             orphanRemoval = true
     )
     private List<HabitScheduleWeekdayEntity> weekdays = new ArrayList<>();
-
-    @PrePersist
-    protected void onCreate() {
-        startDate = LocalDate.now();
-    }
 }

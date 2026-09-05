@@ -2,6 +2,9 @@ package com.prj.habittracker.user.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -28,21 +31,9 @@ public class UserEntity {
 
     private String timezone;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @UpdateTimestamp
     private OffsetDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        OffsetDateTime now = OffsetDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
-    }
 }

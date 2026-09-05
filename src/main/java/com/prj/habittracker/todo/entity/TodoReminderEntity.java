@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -23,7 +24,7 @@ public class TodoReminderEntity {
     private TodoEntity todo;
 
     @Column(nullable = false)
-    private OffsetDateTime reminderTime;
+    private LocalDateTime reminderTime;
 
     @Column(nullable = false)
     private Boolean enabled = true;
