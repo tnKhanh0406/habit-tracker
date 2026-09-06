@@ -1,7 +1,9 @@
 package com.prj.habittracker.todo.controller;
 
 import com.prj.habittracker.todo.dto.request.CreateTodoWithTitleRequest;
+import com.prj.habittracker.todo.dto.request.UpdateCompletedRequest;
 import com.prj.habittracker.todo.dto.request.UpdateTodoInformationRequest;
+import com.prj.habittracker.todo.dto.response.TodoSubtaskResponse;
 import com.prj.habittracker.todo.dto.response.TodoSummaryResponse;
 import com.prj.habittracker.todo.service.TodoService;
 import jakarta.validation.Valid;
@@ -44,5 +46,15 @@ public class TodoController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTodo(@PathVariable String todoId) {
         todoService.deleteTodo(UUID.fromString(todoId));
+    }
+
+    @PutMapping("/{todoId}/subtasks/{subtaskId}")
+    public TodoSubtaskResponse checkTodoSubtask(@PathVariable String todoId, @PathVariable String subtaskId, @RequestBody @Valid UpdateCompletedRequest request) {
+        return todoService.checkTodoSubtask(UUID.fromString(todoId), UUID.fromString(subtaskId), request);
+    }
+
+    @PutMapping("/{todoId}/check")
+    public TodoSummaryResponse checkTodo(@PathVariable String todoId, @RequestBody @Valid UpdateCompletedRequest request) {
+        return todoService.checkTodo(UUID.fromString(todoId), request);
     }
 }

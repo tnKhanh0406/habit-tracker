@@ -5,7 +5,9 @@ import com.prj.habittracker.category.repository.CategoryRepository;
 import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.todo.dto.request.CreateTodoWithTitleRequest;
 import com.prj.habittracker.todo.dto.request.SubtaskRequest;
+import com.prj.habittracker.todo.dto.request.UpdateCompletedRequest;
 import com.prj.habittracker.todo.dto.request.UpdateTodoInformationRequest;
+import com.prj.habittracker.todo.dto.response.TodoSubtaskResponse;
 import com.prj.habittracker.todo.dto.response.TodoSummaryResponse;
 import com.prj.habittracker.todo.entity.TodoCategoryEntity;
 import com.prj.habittracker.todo.entity.TodoEntity;
@@ -13,6 +15,7 @@ import com.prj.habittracker.todo.entity.TodoSubtaskEntity;
 import com.prj.habittracker.todo.mapper.TodoMapper;
 import com.prj.habittracker.todo.repository.TodoCategoryRepository;
 import com.prj.habittracker.todo.repository.TodoRepository;
+import com.prj.habittracker.todo.repository.TodoSubtaskRepository;
 import com.prj.habittracker.todo.service.TodoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ public class TodoServiceImpl implements TodoService {
     private final CategoryRepository categoryRepository;
     private final CurrentUserService currentUserService;
     private final TodoCategoryRepository todoCategoryRepository;
+    private final TodoSubtaskRepository todoSubtaskRepository;
     private final TodoMapper todoMapper;
 
     @Override
@@ -94,6 +98,29 @@ public class TodoServiceImpl implements TodoService {
         TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, currentUserService.getCurrentUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Todo not found"));
         todoRepository.delete(todo);
+    }
+
+    @Override
+    public TodoSubtaskResponse checkTodoSubtask(UUID todoId, UUID subtaskId, UpdateCompletedRequest request) {
+        TodoSubtaskEntity subtask = todoSubtaskRepository.findByIdAndTodoIdAndTodoUserId(subtaskId, todoId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Subtask not found"));
+        subtask.setCompleted(request.completed());
+        TodoSubtaskEntity saved = todoSubtaskRepository.save(subtask);
+        return new TodoSubtaskResponse(
+                saved.getId(),
+                saved.getTitle(),
+                saved.getCompleted(),
+                saved.getPosition()
+        );
+    }
+
+    @Override
+    public TodoSummaryResponse checkTodo(UUID todoId, UpdateCompletedRequest request) {
+        TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Todo not found"));
+        todo.setCompleted(request.completed());
+        todoRepository.save(todo);
+        return todoMapper.toResponse(todo, todo.getSubtasks());
     }
 
     private void attachCategories(TodoEntity todo, List<UUID> categoryIds) {
