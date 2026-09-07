@@ -34,10 +34,10 @@ public class HabitTargetEntity {
     private HabitEntity habit;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal value = BigDecimal.ONE;
+    private BigDecimal value;
 
     @Column(nullable = false, length = 50)
-    private String unit = "done";
+    private String unit;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -2,6 +2,7 @@ package com.prj.habittracker.habit.entity;
 
 import com.prj.habittracker.common.enums.Difficulty;
 import com.prj.habittracker.common.enums.HabitStatus;
+import com.prj.habittracker.common.enums.TrackingType;
 import com.prj.habittracker.user.entity.UserEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -39,6 +40,10 @@ public class HabitEntity {
 
     @Enumerated(EnumType.STRING)
     private HabitStatus status = HabitStatus.ACTIVE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tracking_type", nullable = false, length = 20)
+    private TrackingType trackingType = TrackingType.CHECK;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

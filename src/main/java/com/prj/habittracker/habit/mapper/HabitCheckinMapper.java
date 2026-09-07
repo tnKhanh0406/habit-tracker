@@ -15,7 +15,7 @@ public class HabitCheckinMapper {
                 checkinEntity.getCheckinDate(),
                 checkinEntity.getProgress(),
                 checkinEntity.getCompleted(),
-                targetEntity.getValue(),
+                targetEntity != null ? targetEntity.getValue() : null,
                 currentStreak
         );
     }

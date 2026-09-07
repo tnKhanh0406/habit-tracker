@@ -20,15 +20,16 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
             h.icon,
             h.color,
             h.status,
-            t.unit,
-            t.value,
+            h.trackingType,
+            CASE WHEN h.trackingType = com.prj.habittracker.common.enums.TrackingType.QUANTITY THEN t.unit ELSE null END,
+            CASE WHEN h.trackingType = com.prj.habittracker.common.enums.TrackingType.QUANTITY THEN t.value ELSE null END,
             c.progress,
             CASE WHEN c.id IS NOT NULL THEN c.completed ELSE false END,
             true,
             h.currentStreak
         )
         FROM HabitEntity h
-        JOIN HabitTargetEntity t ON h.id = t.habit.id
+        LEFT JOIN HabitTargetEntity t ON h.id = t.habit.id
         LEFT JOIN HabitCheckinEntity c ON h.id = c.habit.id AND c.checkinDate = :date
         WHERE h.user.id  = :userId
     """)
@@ -37,7 +38,7 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
     @Query("""
         SELECT h
         FROM HabitEntity h
-        JOIN FETCH h.target t
+        LEFT JOIN FETCH h.target t
         JOIN FETCH h.schedule s
         WHERE h.id = :habitId
     """)

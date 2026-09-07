@@ -2,7 +2,7 @@ package com.prj.habittracker.habit.service.impl;
 
 import com.prj.habittracker.category.entity.CategoryEntity;
 import com.prj.habittracker.category.repository.CategoryRepository;
-import com.prj.habittracker.common.enums.CompletionSource;
+import com.prj.habittracker.common.enums.TrackingType;
 import com.prj.habittracker.common.exception.ForbiddenException;
 import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
@@ -17,6 +17,7 @@ import com.prj.habittracker.habit.repository.*;
 import com.prj.habittracker.habit.service.HabitScheduleService;
 import com.prj.habittracker.habit.service.HabitService;
 import com.prj.habittracker.habit.service.HabitStreakService;
+import com.prj.habittracker.habit.service.HabitTrackingDomainService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,7 @@ public class HabitServiceImpl implements HabitService {
     private final HabitStreakService habitStreakService;
     private final CurrentUserService currentUserService;
     private final HabitCheckinRepository habitCheckinRepository;
+    private final HabitTrackingDomainService habitTrackingDomainService;
 
     @Override
     @Transactional
@@ -57,11 +59,7 @@ public class HabitServiceImpl implements HabitService {
         habitScheduleEntity.setHabit(saved);
         habitScheduleRepository.save(habitScheduleEntity);
 
-        HabitTargetEntity habitTargetEntity = new HabitTargetEntity();
-        habitTargetEntity.setHabit(saved);
-        habitTargetRepository.save(habitTargetEntity);
-
-        return habitSummaryMapper.toResponse(saved, habitTargetEntity, null);
+        return habitSummaryMapper.toResponse(saved, null, null);
     }
 
     @Override
@@ -89,7 +87,7 @@ public class HabitServiceImpl implements HabitService {
                     boolean isScheduled = schedule != null && habitScheduleService.isHabitScheduled(schedule, today);
 
                     return new HabitSummaryResponse(
-                            habit.id(), habit.name(), habit.icon(), habit.color(), habit.status(),
+                            habit.id(), habit.name(), habit.icon(), habit.color(), habit.status(), habit.trackingType(),
                             habit.targetUnit(), habit.targetValue(),
                             habit.progress() != null ? habit.progress() : BigDecimal.ZERO,
                             habit.completed() != null ? habit.completed() : false,
@@ -104,11 +102,14 @@ public class HabitServiceImpl implements HabitService {
     public BasicHabitInformationResponse updateBasicHabitInformation(BasicHabitInformationRequest request, UUID habitId) {
         HabitEntity habit = habitRepository.findById(habitId)
                 .orElseThrow(EntityNotFoundException::new);
+        TrackingType previousTrackingType = habit.getTrackingType();
+        habitTrackingDomainService.validateTarget(request.trackingType(), request.targetValue(), request.targetUnit());
         habit.setName(request.name());
         habit.setDescription(request.description());
         habit.setColor(request.color());
         habit.setIcon(request.icon());
         habit.setDifficulty(request.difficulty());
+        habit.setTrackingType(request.trackingType());
 
         List<CategoryEntity> categories = categoryRepository.findAllById(request.categoryIds());
         validateCategories(categories, request.categoryIds(), currentUserService.getCurrentUser().getId());
@@ -130,18 +131,17 @@ public class HabitServiceImpl implements HabitService {
                 .map(c -> new CategoryResponse(c.getId(), c.getName()))
                 .toList();
 
-        HabitTargetEntity target = habitTargetRepository.findByHabitId(habitId)
-                .orElseThrow(EntityNotFoundException::new);
-        BigDecimal oldTargetValue = target.getValue();
-        BigDecimal newTargetValue = request.targetValue();
-
-        if (oldTargetValue.compareTo(newTargetValue) != 0) {
-            updateTodayCheckinAfterTargetChange(habit, newTargetValue);
+        HabitTargetEntity target = habitTargetRepository.findByHabitId(habitId).orElse(null);
+        if (request.trackingType() == TrackingType.QUANTITY) {
+            if (target == null) {
+                target = new HabitTargetEntity();
+                target.setHabit(habit);
+            }
+            target.setUnit(request.targetUnit());
+            target.setValue(request.targetValue());
+            target = habitTargetRepository.save(target);
         }
-
-        target.setUnit(request.targetUnit());
-        target.setValue(request.targetValue());
-        habitTargetRepository.save(target);
+        updateTodayCheckinAfterTrackingChange(habit, previousTrackingType);
 
         return new BasicHabitInformationResponse(
                 habit.getId(),
@@ -150,32 +150,24 @@ public class HabitServiceImpl implements HabitService {
                 habit.getColor(),
                 habit.getIcon(),
                 habit.getDifficulty(),
+                habit.getTrackingType(),
                 categoryResponses,
-                new HabitTargetResponse(target.getValue(), target.getUnit()),
+                habit.getTrackingType() == TrackingType.QUANTITY && target != null
+                    ? new HabitTargetResponse(target.getValue(), target.getUnit())
+                    : null,
                 habit.getCurrentStreak()
         );
     }
 
 
-    private void updateTodayCheckinAfterTargetChange(HabitEntity habit, BigDecimal newTargetValue) {
+    private void updateTodayCheckinAfterTrackingChange(HabitEntity habit, TrackingType previousTrackingType) {
         LocalDate today = LocalDate.now();
         HabitCheckinEntity checkin = habitCheckinRepository.findByHabitIdAndCheckinDate(habit.getId(), today)
                 .orElse(null);
         if (checkin != null) {
             boolean oldCompleted = checkin.getCompleted();
-            boolean reachNewTarget = checkin.getProgress().compareTo(newTargetValue) >= 0;
-            CompletionSource source = checkin.getCompletionSource();
-            boolean newCompleted;
-            if (source == CompletionSource.MANUAL) {
-                newCompleted = true;
-            } else if (reachNewTarget) {
-                newCompleted = true;
-                checkin.setCompletionSource(CompletionSource.PROGRESS);
-            } else {
-                newCompleted = false;
-                checkin.setCompletionSource(null);
-            }
-            checkin.setCompleted(newCompleted);
+            habitTrackingDomainService.reconcileCheckin(habit, checkin, previousTrackingType);
+            boolean newCompleted = checkin.getCompleted();
             habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
         }
     }

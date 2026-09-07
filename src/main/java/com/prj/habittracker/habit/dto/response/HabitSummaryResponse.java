@@ -1,6 +1,7 @@
 package com.prj.habittracker.habit.dto.response;
 
 import com.prj.habittracker.common.enums.HabitStatus;
+import com.prj.habittracker.common.enums.TrackingType;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -11,6 +12,7 @@ public record HabitSummaryResponse(
         String icon,
         String color,
         HabitStatus status,
+        TrackingType trackingType,
         String targetUnit,
         BigDecimal targetValue,
         BigDecimal progress,

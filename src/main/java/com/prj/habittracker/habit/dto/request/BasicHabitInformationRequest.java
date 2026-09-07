@@ -1,6 +1,7 @@
 package com.prj.habittracker.habit.dto.request;
 
 import com.prj.habittracker.common.enums.Difficulty;
+import com.prj.habittracker.common.enums.TrackingType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,10 +22,10 @@ public record BasicHabitInformationRequest(
     @NotNull
     Difficulty difficulty,
     @NotNull
-    List<UUID> categoryIds,
-    @NotBlank
-    String targetUnit,
+    TrackingType trackingType,
     @NotNull
+    List<UUID> categoryIds,
+    String targetUnit,
     BigDecimal targetValue
 ) {
 }
