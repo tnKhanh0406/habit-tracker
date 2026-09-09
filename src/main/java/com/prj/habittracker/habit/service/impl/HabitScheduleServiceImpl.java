@@ -3,6 +3,7 @@ package com.prj.habittracker.habit.service.impl;
 import com.prj.habittracker.common.enums.ScheduleType;
 import com.prj.habittracker.habit.dto.request.HabitScheduleRequest;
 import com.prj.habittracker.habit.dto.response.HabitScheduleResponse;
+import com.prj.habittracker.habit.entity.HabitEntity;
 import com.prj.habittracker.habit.entity.HabitScheduleEntity;
 import com.prj.habittracker.habit.entity.HabitScheduleWeekdayEntity;
 import com.prj.habittracker.habit.repository.HabitScheduleRepository;
@@ -25,6 +26,28 @@ import java.util.UUID;
 public class HabitScheduleServiceImpl implements HabitScheduleService {
 
     private final HabitScheduleRepository habitScheduleRepository;
+
+    @Override
+    @Transactional
+    public void createHabitSchedule(HabitEntity habit, HabitScheduleRequest request) {
+        HabitScheduleEntity schedule = new HabitScheduleEntity();
+        schedule.setHabit(habit);
+        schedule.setScheduleType(request.scheduleType());
+        schedule.setStartDate(request.startDate());
+        schedule.setEndDate(request.endDate());
+        schedule.setIntervalValue(request.intervalValue());
+        if (request.scheduleType() == ScheduleType.WEEKLY) {
+            List<HabitScheduleWeekdayEntity> weekdays = request.weekdays().stream()
+                    .map(day -> {
+                        HabitScheduleWeekdayEntity weekday = new HabitScheduleWeekdayEntity();
+                        weekday.setHabitSchedule(schedule);
+                        weekday.setWeekday(day);
+                        return weekday;
+                    }).toList();
+            schedule.setWeekdays(weekdays);
+        }
+        habit.setSchedule(schedule);
+    }
 
     @Override
     @Transactional

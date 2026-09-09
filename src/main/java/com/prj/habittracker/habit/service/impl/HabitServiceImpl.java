@@ -6,13 +6,14 @@ import com.prj.habittracker.common.enums.TrackingType;
 import com.prj.habittracker.common.exception.ForbiddenException;
 import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
+import com.prj.habittracker.habit.dto.request.CreateHabitRequest;
 import com.prj.habittracker.habit.dto.request.CreateHabitWithNameRequest;
+import com.prj.habittracker.habit.dto.request.HabitReminderRequest;
 import com.prj.habittracker.habit.dto.response.BasicHabitInformationResponse;
-import com.prj.habittracker.habit.dto.response.CategoryResponse;
+import com.prj.habittracker.category.dto.response.CategoryResponse;
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
-import com.prj.habittracker.habit.dto.response.HabitTargetResponse;
 import com.prj.habittracker.habit.entity.*;
-import com.prj.habittracker.habit.mapper.HabitSummaryMapper;
+import com.prj.habittracker.habit.mapper.HabitMapper;
 import com.prj.habittracker.habit.repository.*;
 import com.prj.habittracker.habit.service.HabitScheduleService;
 import com.prj.habittracker.habit.service.HabitService;
@@ -40,12 +41,21 @@ public class HabitServiceImpl implements HabitService {
     private final HabitTargetRepository habitTargetRepository;
     private final CategoryRepository categoryRepository;
     private final HabitCategoryRepository habitCategoryRepository;
-    private final HabitSummaryMapper habitSummaryMapper;
+    private final HabitMapper habitMapper;
     private final HabitScheduleService habitScheduleService;
     private final HabitStreakService habitStreakService;
     private final CurrentUserService currentUserService;
     private final HabitCheckinRepository habitCheckinRepository;
     private final HabitTrackingDomainService habitTrackingDomainService;
+
+    @Override
+    public BasicHabitInformationResponse getHabitDetail(UUID habitId) {
+        HabitEntity habit = habitRepository.findByIdWithTarget(habitId, currentUserService.getCurrentUserId())
+                .orElseThrow(EntityNotFoundException::new);
+        List<CategoryResponse> categories = categoryRepository.getAllCategoriesByHabitId(habitId);
+        HabitTargetEntity target = habit.getTarget();
+        return habitMapper.toDetailResponse(habit, target, categories);
+    }
 
     @Override
     @Transactional
@@ -59,7 +69,46 @@ public class HabitServiceImpl implements HabitService {
         habitScheduleEntity.setHabit(saved);
         habitScheduleRepository.save(habitScheduleEntity);
 
-        return habitSummaryMapper.toResponse(saved, null, null);
+        return habitMapper.toSummaryResponse(saved, null, null);
+    }
+
+    @Override
+    @Transactional
+    public HabitSummaryResponse createHabit(CreateHabitRequest request) {
+        HabitEntity habit = getHabitEntity(request);
+        HabitTargetEntity target = null;
+        if (request.basicHabitInformation().trackingType() == TrackingType.QUANTITY) {
+            target = new HabitTargetEntity();
+            target.setHabit(habit);
+            target.setUnit(request.basicHabitInformation().targetUnit());
+            target.setValue(request.basicHabitInformation().targetValue());
+            habit.setTarget(target);
+        }
+
+        attachCategories(habit, request.basicHabitInformation().categoryIds());
+
+        habitScheduleService.createHabitSchedule(habit, request.schedule());
+
+        if (request.reminders() != null && !request.reminders().isEmpty()) {
+            List<HabitReminderEntity> reminders = request.reminders().stream()
+                    .map(r -> attachReminderEntity(habit, r))
+                    .toList();
+            habit.getReminders().addAll(reminders);
+        }
+        HabitEntity savedHabit = habitRepository.save(habit);
+        return habitMapper.toSummaryResponse(savedHabit, target, null);
+    }
+
+    private HabitEntity getHabitEntity(CreateHabitRequest request) {
+        HabitEntity habit = new HabitEntity();
+        habit.setUser(currentUserService.getCurrentUser());
+        habit.setName(request.basicHabitInformation().name());
+        habit.setDescription(request.basicHabitInformation().description());
+        habit.setColor(request.basicHabitInformation().color());
+        habit.setIcon(request.basicHabitInformation().icon());
+        habit.setDifficulty(request.basicHabitInformation().difficulty());
+        habit.setTrackingType(request.basicHabitInformation().trackingType());
+        return habit;
     }
 
     @Override
@@ -112,7 +161,7 @@ public class HabitServiceImpl implements HabitService {
         habit.setTrackingType(request.trackingType());
 
         List<CategoryEntity> categories = categoryRepository.findAllById(request.categoryIds());
-        validateCategories(categories, request.categoryIds(), currentUserService.getCurrentUser().getId());
+        validateCategories(categories, request.categoryIds(), currentUserService.getCurrentUserId());
 
         habitCategoryRepository.deleteAll(habitCategoryRepository.findAllByHabitId(habitId));
         habitCategoryRepository.flush();
@@ -143,20 +192,7 @@ public class HabitServiceImpl implements HabitService {
         }
         updateTodayCheckinAfterTrackingChange(habit, previousTrackingType);
 
-        return new BasicHabitInformationResponse(
-                habit.getId(),
-                habit.getName(),
-                habit.getDescription(),
-                habit.getColor(),
-                habit.getIcon(),
-                habit.getDifficulty(),
-                habit.getTrackingType(),
-                categoryResponses,
-                habit.getTrackingType() == TrackingType.QUANTITY && target != null
-                    ? new HabitTargetResponse(target.getValue(), target.getUnit())
-                    : null,
-                habit.getCurrentStreak()
-        );
+        return habitMapper.toDetailResponse(habit, target, categoryResponses);
     }
 
 
@@ -183,6 +219,23 @@ public class HabitServiceImpl implements HabitService {
         }
     }
 
+    private void attachCategories(HabitEntity habit, List<UUID> categoryIds) {
+        List<CategoryEntity> categories = categoryRepository.findAllById(categoryIds);
+        categories.forEach(category -> {
+            HabitCategoryEntity link = new HabitCategoryEntity();
+            link.setHabit(habit);
+            link.setCategory(category);
+            habit.getCategories().add(link);
+        });
+    }
+
+    private HabitReminderEntity attachReminderEntity(HabitEntity habit, HabitReminderRequest request) {
+        HabitReminderEntity reminder = new HabitReminderEntity();
+        reminder.setHabit(habit);
+        reminder.setReminderTime(request.reminderTime());
+        reminder.setEnabled(request.enabled());
+        return reminder;
+    }
 
 }
 //Case 1: progress < oldTarget, oldCompleted = true

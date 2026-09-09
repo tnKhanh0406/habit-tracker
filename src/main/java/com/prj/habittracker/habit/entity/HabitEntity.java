@@ -11,6 +11,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -68,4 +70,10 @@ public class HabitEntity {
 
     @Column(nullable = false)
     private Integer longestStreak = 0;
+
+    @OneToMany(mappedBy = "habit", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<HabitCategoryEntity> categories = new ArrayList<>();
+
+    @OneToMany(mappedBy = "habit", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<HabitReminderEntity> reminders = new ArrayList<>();
 }

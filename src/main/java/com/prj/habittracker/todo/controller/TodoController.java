@@ -20,13 +20,13 @@ import java.util.UUID;
 public class TodoController {
     private final TodoService todoService;
 
-    @PostMapping
+    @PostMapping("/name")
     @ResponseStatus(HttpStatus.CREATED)
     public TodoSummaryResponse createTodoWithTitle(@RequestBody @Valid CreateTodoWithTitleRequest request) {
         return todoService.createTodoWithTitle(request);
     }
 
-    @PostMapping("/full")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TodoSummaryResponse createTodo(@RequestBody @Valid UpdateTodoInformationRequest request) {
         return todoService.createTodo(request);

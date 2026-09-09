@@ -41,6 +41,7 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
         LEFT JOIN FETCH h.target t
         JOIN FETCH h.schedule s
         WHERE h.id = :habitId
+        AND h.user.id = :userId
     """)
-    Optional<HabitEntity> findByIdWithTarget(UUID habitId);
+    Optional<HabitEntity> findByIdWithTarget(UUID habitId, UUID userId);
 }

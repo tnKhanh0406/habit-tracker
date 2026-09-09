@@ -20,4 +20,15 @@ public interface CategoryRepository extends JpaRepository<CategoryEntity, UUID> 
     List<CategoryResponse> getAllCategories(UUID userId);
 
     List<CategoryEntity> findAllByUser_IdOrUserIsNull(UUID userId);
+
+    @Query("""
+        SELECT new com.prj.habittracker.category.dto.response.CategoryResponse(
+            c.id,
+            c.name
+        )
+        FROM CategoryEntity  c
+        JOIN HabitCategoryEntity hc ON c.id = hc.category.id
+        WHERE hc.habit.id = :habitId
+    """)
+    List<CategoryResponse> getAllCategoriesByHabitId(UUID habitId);
 }

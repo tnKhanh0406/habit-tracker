@@ -2,6 +2,7 @@ package com.prj.habittracker.habit.dto.response;
 
 import com.prj.habittracker.common.enums.Difficulty;
 import com.prj.habittracker.common.enums.TrackingType;
+import com.prj.habittracker.category.dto.response.CategoryResponse;
 
 import java.util.List;
 import java.util.UUID;

@@ -3,6 +3,7 @@ package com.prj.habittracker.habit.service.impl;
 import com.prj.habittracker.common.enums.CompletionSource;
 import com.prj.habittracker.common.enums.TrackingType;
 import com.prj.habittracker.common.exception.InvalidHabitCheckinException;
+import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.habit.dto.request.AddCheckinProgressRequest;
 import com.prj.habittracker.habit.dto.request.UpdateCheckinCompletionRequest;
 import com.prj.habittracker.habit.dto.request.UpdateCheckinProgressRequest;
@@ -33,11 +34,12 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
     private final HabitCheckinMapper habitCheckinMapper;
     private final HabitStreakService habitStreakService;
     private final HabitTrackingDomainService habitTrackingDomainService;
+    private final CurrentUserService currentUserService;
 
     @Transactional
     @Override
     public HabitCheckinResponse addProgress(UUID habitId, AddCheckinProgressRequest request) {
-        HabitEntity habit = habitRepository.findByIdWithTarget(habitId)
+        HabitEntity habit = habitRepository.findByIdWithTarget(habitId, currentUserService.getCurrentUserId())
                 .orElseThrow(EntityNotFoundException::new);
         habitTrackingDomainService.requireTrackingType(habit, TrackingType.QUANTITY);
         LocalDate today = LocalDate.now();
@@ -54,7 +56,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
     @Transactional
     @Override
     public HabitCheckinResponse updateProgress(UUID habitId, UpdateCheckinProgressRequest request) {
-        HabitEntity habit = habitRepository.findByIdWithTarget(habitId)
+        HabitEntity habit = habitRepository.findByIdWithTarget(habitId, currentUserService.getCurrentUserId())
                 .orElseThrow(EntityNotFoundException::new);
         habitTrackingDomainService.requireTrackingType(habit, TrackingType.QUANTITY);
         LocalDate today = LocalDate.now();
@@ -72,7 +74,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
     @Transactional
     @Override
     public HabitCheckinResponse updateCompletion(UUID habitId, UpdateCheckinCompletionRequest request) {
-        HabitEntity habit = habitRepository.findByIdWithTarget(habitId)
+        HabitEntity habit = habitRepository.findByIdWithTarget(habitId, currentUserService.getCurrentUserId())
                 .orElseThrow(EntityNotFoundException::new);
         LocalDate today = LocalDate.now();
         HabitCheckinEntity checkin = getOrCreateTodayCheckin(habit, today);
