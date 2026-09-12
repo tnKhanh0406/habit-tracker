@@ -46,8 +46,8 @@ public class RewardServiceImpl implements RewardService {
 
     @Override
     public RewardResponse updateReward(UUID rewardId, RewardRequest request) {
-        RewardEntity reward = rewardRepository.findById(rewardId)
-                .orElseThrow(EntityNotFoundException::new);
+        RewardEntity reward = rewardRepository.findByIdAndUserId(rewardId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Reward not found with id: " + rewardId));
         return setRewardField(request, reward);
     }
 
@@ -63,6 +63,9 @@ public class RewardServiceImpl implements RewardService {
 
     @Override
     public void deleteReward(UUID rewardId) {
-        rewardRepository.deleteById(rewardId);
+        int deleted = rewardRepository.deleteByIdAndUserId(rewardId, currentUserService.getCurrentUserId());
+        if (deleted == 0) {
+            throw new EntityNotFoundException("Reward not found with id: " + rewardId);
+        }
     }
 }
