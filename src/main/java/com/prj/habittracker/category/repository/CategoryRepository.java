@@ -31,4 +31,15 @@ public interface CategoryRepository extends JpaRepository<CategoryEntity, UUID> 
         WHERE hc.habit.id = :habitId
     """)
     List<CategoryResponse> getAllCategoriesByHabitId(UUID habitId);
+
+    @Query("""
+        SELECT new com.prj.habittracker.category.dto.response.CategoryResponse(
+            c.id,
+            c.name
+        )
+        FROM CategoryEntity  c
+        JOIN TodoCategoryEntity tc ON c.id = tc.category.id
+        WHERE tc.todo.id = :todoId
+    """)
+    List<CategoryResponse> getAllCategoriesByTodoId(UUID todoId);
 }

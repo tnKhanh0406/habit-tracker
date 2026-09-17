@@ -47,7 +47,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         BigDecimal newProgress = checkin.getProgress().add(request.amount());
         checkin.setProgress(newProgress);
         boolean oldCompleted = checkin.getCompleted();
-        habitTrackingDomainService.applyProgressCompletion(habit, checkin);
+        habitTrackingDomainService.applyProgressCompletion(habit, habit.getTarget(), checkin);
         boolean newCompleted = checkin.getCompleted();
         habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
         return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
@@ -64,7 +64,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         boolean oldCompleted = checkin.getCompleted();
         BigDecimal newProgress = request.progress();
         checkin.setProgress(newProgress);
-        habitTrackingDomainService.applyProgressCompletion(habit, checkin);
+        habitTrackingDomainService.applyProgressCompletion(habit, habit.getTarget(), checkin);
         boolean newCompleted = checkin.getCompleted();
         habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
         habitCheckinRepository.save(checkin);
@@ -81,7 +81,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         boolean oldCompleted = checkin.getCompleted();
         boolean newCompleted = request.completed();
         if (habit.getTrackingType() == TrackingType.QUANTITY
-            && habitTrackingDomainService.reachedTarget(habit, checkin.getProgress())
+            && habitTrackingDomainService.reachedTarget(habit.getTrackingType(), habit.getTarget(), checkin.getProgress())
             && !newCompleted) {
             throw new InvalidHabitCheckinException("Cannot mark habit incomplete when progress has reached target");
         }

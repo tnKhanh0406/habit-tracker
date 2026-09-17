@@ -3,6 +3,7 @@ package com.prj.habittracker.todo.repository;
 import com.prj.habittracker.todo.entity.TodoEntity;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -20,4 +21,8 @@ public interface TodoRepository extends JpaRepository<TodoEntity, UUID> {
 
     @EntityGraph(attributePaths = "subtasks")
     List<TodoEntity> findAllByUserId(UUID userId);
+
+    @Modifying
+    @Query("DELETE FROM TodoEntity t WHERE t.id = :todoId AND t.user.id = :userId")
+    int deleteByIdAndUserId(UUID todoId, UUID userId);
 }

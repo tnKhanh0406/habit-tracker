@@ -13,9 +13,7 @@ public record UpdateTodoInformationRequest(
         @NotBlank
         String title,
         String description,
-        @NotNull
         LocalDate dueDate,
-        @NotNull
         LocalTime dueTime,
         @NotNull
         Difficulty difficulty,

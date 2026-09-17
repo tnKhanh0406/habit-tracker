@@ -4,6 +4,7 @@ import com.prj.habittracker.common.enums.TrackingType;
 import com.prj.habittracker.common.enums.CompletionSource;
 import com.prj.habittracker.habit.entity.HabitCheckinEntity;
 import com.prj.habittracker.habit.entity.HabitEntity;
+import com.prj.habittracker.habit.entity.HabitTargetEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,20 +22,27 @@ public class HabitTrackingDomainService {
         }
     }
 
-    public boolean reachedTarget(HabitEntity habit, BigDecimal progress) {
-        return habit.getTrackingType() == TrackingType.QUANTITY
-                && habit.getTarget() != null
+    public boolean reachedTarget(TrackingType trackingType,
+                                 HabitTargetEntity target,
+                                 BigDecimal progress) {
+        return trackingType == TrackingType.QUANTITY
+                && target != null
                 && progress != null
-                && progress.compareTo(habit.getTarget().getValue()) >= 0;
+                && progress.compareTo(target.getValue()) >= 0;
     }
 
-    public void applyProgressCompletion(HabitEntity habit, HabitCheckinEntity checkin) {
-        boolean completed = reachedTarget(habit, checkin.getProgress());
+    public void applyProgressCompletion(HabitEntity habit,
+                                        HabitTargetEntity target,
+                                        HabitCheckinEntity checkin) {
+        boolean completed = reachedTarget(habit.getTrackingType(), target, checkin.getProgress());
         checkin.setCompleted(completed);
         checkin.setCompletionSource(completed ? CompletionSource.PROGRESS : null);
     }
 
-    public void reconcileCheckin(HabitEntity habit, HabitCheckinEntity checkin, TrackingType previousTrackingType) {
+    public void reconcileCheckin(HabitEntity habit,
+                                 HabitTargetEntity target,
+                                 HabitCheckinEntity checkin,
+                                 TrackingType previousTrackingType) {
         if (checkin.getCompletionSource() == CompletionSource.MANUAL) {
             checkin.setCompleted(true);
             return;
@@ -44,7 +52,7 @@ public class HabitTrackingDomainService {
             checkin.setCompletionSource(null);
             return;
         }
-        applyProgressCompletion(habit, checkin);
+        applyProgressCompletion(habit, target, checkin);
     }
 
     public void requireTrackingType(HabitEntity habit, TrackingType expected) {

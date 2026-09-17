@@ -5,7 +5,6 @@ import com.prj.habittracker.habit.dto.response.HabitScheduleResponse;
 import com.prj.habittracker.habit.service.HabitScheduleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;

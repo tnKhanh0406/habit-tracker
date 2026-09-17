@@ -47,4 +47,10 @@ public class HabitController {
                                                                      @RequestBody @Valid BasicHabitInformationRequest request) {
         return habitService.updateBasicHabitInformation(request, UUID.fromString(habitId));
     }
+
+    @DeleteMapping("/{habitId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteHabit(@PathVariable("habitId") String habitId) {
+        habitService.deleteHabit(UUID.fromString(habitId));
+    }
 }

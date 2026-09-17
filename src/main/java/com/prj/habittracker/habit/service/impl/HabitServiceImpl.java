@@ -190,22 +190,42 @@ public class HabitServiceImpl implements HabitService {
             target.setValue(request.targetValue());
             target = habitTargetRepository.save(target);
         }
-        updateTodayCheckinAfterTrackingChange(habit, previousTrackingType);
+        System.out.println("request target = " + request.targetValue());
+        System.out.println("saved target = " + (target != null ? target.getValue() : null));
+        System.out.println(
+                "habit target = " +
+                        (habit.getTarget() != null
+                                ? habit.getTarget().getValue()
+                                : null)
+        );
+        updateTodayCheckinAfterTrackingChange(habit, target, previousTrackingType);
 
         return habitMapper.toDetailResponse(habit, target, categoryResponses);
     }
 
+    @Override
+    public void deleteHabit(UUID habitId) {
+        int deleted = habitRepository.deleteByIdAndUserId(habitId, currentUserService.getCurrentUserId());
+        if (deleted == 0) {
+            throw new EntityNotFoundException();
+        }
+    }
 
-    private void updateTodayCheckinAfterTrackingChange(HabitEntity habit, TrackingType previousTrackingType) {
+
+    private void updateTodayCheckinAfterTrackingChange(HabitEntity habit,
+                                                       HabitTargetEntity target,
+                                                       TrackingType previousTrackingType) {
         LocalDate today = LocalDate.now();
         HabitCheckinEntity checkin = habitCheckinRepository.findByHabitIdAndCheckinDate(habit.getId(), today)
-                .orElse(null);
-        if (checkin != null) {
-            boolean oldCompleted = checkin.getCompleted();
-            habitTrackingDomainService.reconcileCheckin(habit, checkin, previousTrackingType);
-            boolean newCompleted = checkin.getCompleted();
-            habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
+                        .orElse(null);
+        if (checkin == null) {
+            return;
         }
+        boolean oldCompleted = checkin.getCompleted();
+        System.out.println("progress = " + checkin.getProgress());
+        habitTrackingDomainService.reconcileCheckin(habit, target, checkin, previousTrackingType);
+        boolean newCompleted = checkin.getCompleted();
+        habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
     }
 
     private void validateCategories(List<CategoryEntity> found, List<UUID> requestedIds, UUID userId) {

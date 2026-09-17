@@ -16,4 +16,5 @@ public interface HabitService {
     HabitSummaryResponse createHabit(CreateHabitRequest request);
     List<HabitSummaryResponse> getAllHabits();
     BasicHabitInformationResponse updateBasicHabitInformation(BasicHabitInformationRequest request, UUID habitId);
+    void deleteHabit(UUID habitId);
 }

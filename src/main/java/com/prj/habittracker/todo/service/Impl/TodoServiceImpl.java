@@ -1,5 +1,6 @@
 package com.prj.habittracker.todo.service.Impl;
 
+import com.prj.habittracker.category.dto.response.CategoryResponse;
 import com.prj.habittracker.category.entity.CategoryEntity;
 import com.prj.habittracker.category.repository.CategoryRepository;
 import com.prj.habittracker.common.security.CurrentUserService;
@@ -7,6 +8,7 @@ import com.prj.habittracker.todo.dto.request.CreateTodoWithTitleRequest;
 import com.prj.habittracker.todo.dto.request.SubtaskRequest;
 import com.prj.habittracker.todo.dto.request.UpdateCompletedRequest;
 import com.prj.habittracker.todo.dto.request.UpdateTodoInformationRequest;
+import com.prj.habittracker.todo.dto.response.TodoInformationResponse;
 import com.prj.habittracker.todo.dto.response.TodoSubtaskResponse;
 import com.prj.habittracker.todo.dto.response.TodoSummaryResponse;
 import com.prj.habittracker.todo.entity.TodoCategoryEntity;
@@ -36,6 +38,31 @@ public class TodoServiceImpl implements TodoService {
     private final TodoCategoryRepository todoCategoryRepository;
     private final TodoSubtaskRepository todoSubtaskRepository;
     private final TodoMapper todoMapper;
+
+    @Override
+    public TodoInformationResponse getTodoInformation(UUID todoId) {
+        TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Todo not found with id: " + todoId));
+        List<CategoryResponse> categories = categoryRepository.getAllCategoriesByTodoId(todoId);
+        List<TodoSubtaskResponse> subtasks = todo.getSubtasks().stream()
+                .map(subtask -> new TodoSubtaskResponse(
+                        subtask.getId(),
+                        subtask.getTitle(),
+                        subtask.getCompleted(),
+                        subtask.getPosition()
+                )).toList();
+        return new TodoInformationResponse(
+                todoId,
+                todo.getTitle(),
+                todo.getDescription(),
+                todo.getDifficulty(),
+                todo.getCompleted(),
+                todo.getDueDate(),
+                todo.getDueTime(),
+                categories,
+                subtasks
+        );
+    }
 
     @Override
     public TodoSummaryResponse createTodoWithTitle(CreateTodoWithTitleRequest request) {
@@ -95,9 +122,10 @@ public class TodoServiceImpl implements TodoService {
 
     @Override
     public void deleteTodo(UUID todoId) {
-        TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, currentUserService.getCurrentUserId())
-                .orElseThrow(() -> new EntityNotFoundException("Todo not found"));
-        todoRepository.delete(todo);
+        int deleted = todoRepository.deleteByIdAndUserId(todoId, currentUserService.getCurrentUserId());
+        if (deleted == 0) {
+            throw new EntityNotFoundException("Todo not found with id: " + todoId);
+        }
     }
 
     @Override

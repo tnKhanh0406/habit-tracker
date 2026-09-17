@@ -3,6 +3,7 @@ package com.prj.habittracker.habit.repository;
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
 import com.prj.habittracker.habit.entity.HabitEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -44,4 +45,12 @@ public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
         AND h.user.id = :userId
     """)
     Optional<HabitEntity> findByIdWithTarget(UUID habitId, UUID userId);
+
+    @Modifying
+    @Query("""
+        delete from HabitEntity h
+        where h.id = :habitId
+        and h.user.id = :userId
+    """)
+    int deleteByIdAndUserId(@Param("habitId") UUID habitId, @Param("userId") UUID userId);
 }

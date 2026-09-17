@@ -3,6 +3,7 @@ package com.prj.habittracker.todo.controller;
 import com.prj.habittracker.todo.dto.request.CreateTodoWithTitleRequest;
 import com.prj.habittracker.todo.dto.request.UpdateCompletedRequest;
 import com.prj.habittracker.todo.dto.request.UpdateTodoInformationRequest;
+import com.prj.habittracker.todo.dto.response.TodoInformationResponse;
 import com.prj.habittracker.todo.dto.response.TodoSubtaskResponse;
 import com.prj.habittracker.todo.dto.response.TodoSummaryResponse;
 import com.prj.habittracker.todo.service.TodoService;
@@ -19,6 +20,11 @@ import java.util.UUID;
 @RequestMapping("/api/todos")
 public class TodoController {
     private final TodoService todoService;
+
+    @GetMapping("/{todoId}")
+    public TodoInformationResponse getTodoInformation(@PathVariable String todoId) {
+        return todoService.getTodoInformation(UUID.fromString(todoId));
+    }
 
     @PostMapping("/name")
     @ResponseStatus(HttpStatus.CREATED)
