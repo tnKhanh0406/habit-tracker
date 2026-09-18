@@ -18,7 +18,9 @@ public class CurrentUserService {
 
     public UserEntity getCurrentUser() {
         UUID userId = currentUserProvider.getCurrentUserId();
-        return userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+        return userRepository.findById(userId)
+            .filter(user -> user.getStatus() == com.prj.habittracker.common.enums.UserStatus.ACTIVE)
+            .orElseThrow(EntityNotFoundException::new);
     }
 
     public UUID getCurrentUserId() {
