@@ -3,6 +3,7 @@ package com.prj.habittracker.todo.service.Impl;
 import com.prj.habittracker.category.dto.response.CategoryResponse;
 import com.prj.habittracker.category.entity.CategoryEntity;
 import com.prj.habittracker.category.repository.CategoryRepository;
+import com.prj.habittracker.common.enums.RewardSourceType;
 import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.todo.dto.request.CreateTodoWithTitleRequest;
 import com.prj.habittracker.todo.dto.request.SubtaskRequest;
@@ -19,6 +20,7 @@ import com.prj.habittracker.todo.repository.TodoCategoryRepository;
 import com.prj.habittracker.todo.repository.TodoRepository;
 import com.prj.habittracker.todo.repository.TodoSubtaskRepository;
 import com.prj.habittracker.todo.service.TodoService;
+import com.prj.habittracker.rpg.character.service.CompletionRewardCoordinator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ public class TodoServiceImpl implements TodoService {
     private final TodoCategoryRepository todoCategoryRepository;
     private final TodoSubtaskRepository todoSubtaskRepository;
     private final TodoMapper todoMapper;
+    private final CompletionRewardCoordinator completionRewardCoordinator;
 
     @Override
     public TodoInformationResponse getTodoInformation(UUID todoId) {
@@ -143,11 +146,22 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
+    @Transactional
     public TodoSummaryResponse checkTodo(UUID todoId, UpdateCompletedRequest request) {
         TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, currentUserService.getCurrentUserId())
                 .orElseThrow(() -> new EntityNotFoundException("Todo not found"));
+        boolean oldCompleted = todo.getCompleted();
         todo.setCompleted(request.completed());
         todoRepository.save(todo);
+        completionRewardCoordinator.onCompletionChanged(
+                currentUserService.getCurrentUserId(),
+                RewardSourceType.TODO_COMPLETION,
+                todo.getId(),
+                oldCompleted,
+                todo.getCompleted(),
+                todo.getDifficulty(),
+                0
+        );
         return todoMapper.toResponse(todo, todo.getSubtasks());
     }
 

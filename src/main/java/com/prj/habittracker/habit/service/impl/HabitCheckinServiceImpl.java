@@ -1,6 +1,7 @@
 package com.prj.habittracker.habit.service.impl;
 
 import com.prj.habittracker.common.enums.CompletionSource;
+import com.prj.habittracker.common.enums.RewardSourceType;
 import com.prj.habittracker.common.enums.TrackingType;
 import com.prj.habittracker.common.exception.InvalidHabitCheckinException;
 import com.prj.habittracker.common.security.CurrentUserService;
@@ -16,6 +17,7 @@ import com.prj.habittracker.habit.repository.HabitRepository;
 import com.prj.habittracker.habit.service.HabitCheckinService;
 import com.prj.habittracker.habit.service.HabitStreakService;
 import com.prj.habittracker.habit.service.HabitTrackingDomainService;
+import com.prj.habittracker.rpg.character.service.CompletionRewardCoordinator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
     private final HabitStreakService habitStreakService;
     private final HabitTrackingDomainService habitTrackingDomainService;
     private final CurrentUserService currentUserService;
+    private final CompletionRewardCoordinator completionRewardCoordinator;
 
     @Transactional
     @Override
@@ -50,6 +53,15 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         habitTrackingDomainService.applyProgressCompletion(habit, habit.getTarget(), checkin);
         boolean newCompleted = checkin.getCompleted();
         habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
+        completionRewardCoordinator.onCompletionChanged(
+            currentUserService.getCurrentUserId(),
+            RewardSourceType.HABIT_COMPLETION,
+            checkin.getId(),
+            oldCompleted,
+            newCompleted,
+            habit.getDifficulty(),
+            habit.getCurrentStreak()
+        );
         return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
     }
 
@@ -67,6 +79,15 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
         habitTrackingDomainService.applyProgressCompletion(habit, habit.getTarget(), checkin);
         boolean newCompleted = checkin.getCompleted();
         habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
+        completionRewardCoordinator.onCompletionChanged(
+            currentUserService.getCurrentUserId(),
+            RewardSourceType.HABIT_COMPLETION,
+            checkin.getId(),
+            oldCompleted,
+            newCompleted,
+            habit.getDifficulty(),
+            habit.getCurrentStreak()
+        );
         habitCheckinRepository.save(checkin);
         return habitCheckinMapper.toHabitCheckinResponse(habitId, checkin, habit.getTarget(), habit.getCurrentStreak());
     }
@@ -92,6 +113,15 @@ public class HabitCheckinServiceImpl implements HabitCheckinService {
             checkin.setCompletionSource(null);
         }
         habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
+        completionRewardCoordinator.onCompletionChanged(
+            currentUserService.getCurrentUserId(),
+            RewardSourceType.HABIT_COMPLETION,
+            checkin.getId(),
+            oldCompleted,
+            newCompleted,
+            habit.getDifficulty(),
+            habit.getCurrentStreak()
+        );
         habitCheckinRepository.save(checkin);
         return habitCheckinMapper.toHabitCheckinResponse(
             habitId,

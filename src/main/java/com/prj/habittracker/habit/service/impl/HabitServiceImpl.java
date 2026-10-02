@@ -3,6 +3,7 @@ package com.prj.habittracker.habit.service.impl;
 import com.prj.habittracker.category.entity.CategoryEntity;
 import com.prj.habittracker.category.repository.CategoryRepository;
 import com.prj.habittracker.common.enums.TrackingType;
+import com.prj.habittracker.common.enums.RewardSourceType;
 import com.prj.habittracker.common.exception.ForbiddenException;
 import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.habit.dto.request.BasicHabitInformationRequest;
@@ -19,6 +20,7 @@ import com.prj.habittracker.habit.service.HabitScheduleService;
 import com.prj.habittracker.habit.service.HabitService;
 import com.prj.habittracker.habit.service.HabitStreakService;
 import com.prj.habittracker.habit.service.HabitTrackingDomainService;
+import com.prj.habittracker.rpg.character.service.CompletionRewardCoordinator;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,7 @@ public class HabitServiceImpl implements HabitService {
     private final CurrentUserService currentUserService;
     private final HabitCheckinRepository habitCheckinRepository;
     private final HabitTrackingDomainService habitTrackingDomainService;
+    private final CompletionRewardCoordinator completionRewardCoordinator;
 
     @Override
     public BasicHabitInformationResponse getHabitDetail(UUID habitId) {
@@ -148,6 +151,7 @@ public class HabitServiceImpl implements HabitService {
     }
 
     @Override
+    @Transactional
     public BasicHabitInformationResponse updateBasicHabitInformation(BasicHabitInformationRequest request, UUID habitId) {
         HabitEntity habit = habitRepository.findById(habitId)
                 .orElseThrow(EntityNotFoundException::new);
@@ -190,14 +194,6 @@ public class HabitServiceImpl implements HabitService {
             target.setValue(request.targetValue());
             target = habitTargetRepository.save(target);
         }
-        System.out.println("request target = " + request.targetValue());
-        System.out.println("saved target = " + (target != null ? target.getValue() : null));
-        System.out.println(
-                "habit target = " +
-                        (habit.getTarget() != null
-                                ? habit.getTarget().getValue()
-                                : null)
-        );
         updateTodayCheckinAfterTrackingChange(habit, target, previousTrackingType);
 
         return habitMapper.toDetailResponse(habit, target, categoryResponses);
@@ -222,10 +218,19 @@ public class HabitServiceImpl implements HabitService {
             return;
         }
         boolean oldCompleted = checkin.getCompleted();
-        System.out.println("progress = " + checkin.getProgress());
         habitTrackingDomainService.reconcileCheckin(habit, target, checkin, previousTrackingType);
         boolean newCompleted = checkin.getCompleted();
         habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
+        completionRewardCoordinator.onCompletionChanged(
+            currentUserService.getCurrentUserId(),
+            RewardSourceType.HABIT_COMPLETION,
+            checkin.getId(),
+            oldCompleted,
+            newCompleted,
+            habit.getDifficulty(),
+            habit.getCurrentStreak()
+        );
+        habitCheckinRepository.save(checkin);
     }
 
     private void validateCategories(List<CategoryEntity> found, List<UUID> requestedIds, UUID userId) {

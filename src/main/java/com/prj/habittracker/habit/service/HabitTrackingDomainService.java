@@ -34,6 +34,10 @@ public class HabitTrackingDomainService {
     public void applyProgressCompletion(HabitEntity habit,
                                         HabitTargetEntity target,
                                         HabitCheckinEntity checkin) {
+        if (checkin.getCompletionSource() == CompletionSource.MANUAL) {
+            checkin.setCompleted(true);
+            return;
+        }
         boolean completed = reachedTarget(habit.getTrackingType(), target, checkin.getProgress());
         checkin.setCompleted(completed);
         checkin.setCompletionSource(completed ? CompletionSource.PROGRESS : null);

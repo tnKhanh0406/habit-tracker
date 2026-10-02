@@ -8,6 +8,7 @@ import com.prj.habittracker.user.dto.response.TokenResponse;
 import com.prj.habittracker.user.dto.response.UserResponse;
 import com.prj.habittracker.user.entity.UserEntity;
 import com.prj.habittracker.user.repository.UserRepository;
+import com.prj.habittracker.rpg.character.service.PlayerCharacterService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,15 +25,18 @@ public class AuthService {
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final PlayerCharacterService playerCharacterService;
     private final String dummyPasswordHash;
 
     public AuthService(UserRepository users,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       PlayerCharacterService playerCharacterService) {
 
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.playerCharacterService = playerCharacterService;
 
         this.dummyPasswordHash = passwordEncoder.encode(
                 UUID.randomUUID().toString());
@@ -59,7 +63,9 @@ public class AuthService {
         user.setStatus(UserStatus.ACTIVE);
         user.setTimezone("Asia/Ho_Chi_Minh");
 
-        return UserResponse.from(users.saveAndFlush(user));
+        UserEntity savedUser = users.saveAndFlush(user);
+        playerCharacterService.createCharacter(savedUser.getId());
+        return UserResponse.from(savedUser);
     }
 
     @Transactional(readOnly = true)
