@@ -8,6 +8,7 @@ import com.prj.habittracker.habit.dto.response.HabitTargetResponse;
 import com.prj.habittracker.habit.entity.HabitCheckinEntity;
 import com.prj.habittracker.habit.entity.HabitEntity;
 import com.prj.habittracker.habit.entity.HabitTargetEntity;
+import com.prj.habittracker.rpg.character.dto.response.RewardChangeResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,6 +41,15 @@ public class HabitMapper {
             HabitTargetEntity target,
             List<CategoryResponse> categories
     ) {
+        return toDetailResponse(habit, target, categories, null);
+    }
+
+    public BasicHabitInformationResponse toDetailResponse(
+            HabitEntity habit,
+            HabitTargetEntity target,
+            List<CategoryResponse> categories,
+            RewardChangeResponse reward
+    ) {
         return new BasicHabitInformationResponse(
                 habit.getId(),
                 habit.getName(),
@@ -52,7 +62,8 @@ public class HabitMapper {
                 habit.getTrackingType() == TrackingType.QUANTITY && target != null
                         ? new HabitTargetResponse(target.getValue(), target.getUnit())
                         : null,
-                habit.getCurrentStreak()
+                habit.getCurrentStreak(),
+                reward
         );
     }
 }

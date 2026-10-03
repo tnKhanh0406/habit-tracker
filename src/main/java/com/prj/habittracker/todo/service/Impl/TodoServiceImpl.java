@@ -21,6 +21,7 @@ import com.prj.habittracker.todo.repository.TodoRepository;
 import com.prj.habittracker.todo.repository.TodoSubtaskRepository;
 import com.prj.habittracker.todo.service.TodoService;
 import com.prj.habittracker.rpg.character.service.CompletionRewardCoordinator;
+import com.prj.habittracker.rpg.character.dto.response.RewardChangeResponse;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -79,7 +80,8 @@ public class TodoServiceImpl implements TodoService {
                 savedTodo.getCompleted(),
                 savedTodo.getDueDate(),
                 savedTodo.getDueTime(),
-                List.of()
+                List.of(),
+                null
         );
     }
 
@@ -153,7 +155,7 @@ public class TodoServiceImpl implements TodoService {
         boolean oldCompleted = todo.getCompleted();
         todo.setCompleted(request.completed());
         todoRepository.save(todo);
-        completionRewardCoordinator.onCompletionChanged(
+        RewardChangeResponse reward = completionRewardCoordinator.onCompletionChanged(
                 currentUserService.getCurrentUserId(),
                 RewardSourceType.TODO_COMPLETION,
                 todo.getId(),
@@ -162,7 +164,7 @@ public class TodoServiceImpl implements TodoService {
                 todo.getDifficulty(),
                 0
         );
-        return todoMapper.toResponse(todo, todo.getSubtasks());
+        return todoMapper.toResponse(todo, todo.getSubtasks(), reward);
     }
 
     private void attachCategories(TodoEntity todo, List<UUID> categoryIds) {

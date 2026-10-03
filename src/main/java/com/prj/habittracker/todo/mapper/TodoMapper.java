@@ -4,6 +4,7 @@ import com.prj.habittracker.todo.dto.response.TodoSubtaskResponse;
 import com.prj.habittracker.todo.dto.response.TodoSummaryResponse;
 import com.prj.habittracker.todo.entity.TodoEntity;
 import com.prj.habittracker.todo.entity.TodoSubtaskEntity;
+import com.prj.habittracker.rpg.character.dto.response.RewardChangeResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -11,6 +12,10 @@ import java.util.List;
 @Component
 public class TodoMapper {
     public TodoSummaryResponse toResponse(TodoEntity todo, List<TodoSubtaskEntity> subtasks) {
+        return toResponse(todo, subtasks, null);
+    }
+
+    public TodoSummaryResponse toResponse(TodoEntity todo, List<TodoSubtaskEntity> subtasks, RewardChangeResponse reward) {
         return new TodoSummaryResponse(
                 todo.getId(),
                 todo.getTitle(),
@@ -24,7 +29,8 @@ public class TodoMapper {
                                 subtask.getCompleted(),
                                 subtask.getPosition()
                         ))
-                        .toList()
+                        .toList(),
+                    reward
         );
     }
 

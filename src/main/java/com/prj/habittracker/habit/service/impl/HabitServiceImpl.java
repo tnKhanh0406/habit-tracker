@@ -21,6 +21,7 @@ import com.prj.habittracker.habit.service.HabitService;
 import com.prj.habittracker.habit.service.HabitStreakService;
 import com.prj.habittracker.habit.service.HabitTrackingDomainService;
 import com.prj.habittracker.rpg.character.service.CompletionRewardCoordinator;
+import com.prj.habittracker.rpg.character.dto.response.RewardChangeResponse;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -194,9 +195,9 @@ public class HabitServiceImpl implements HabitService {
             target.setValue(request.targetValue());
             target = habitTargetRepository.save(target);
         }
-        updateTodayCheckinAfterTrackingChange(habit, target, previousTrackingType);
+        RewardChangeResponse reward = updateTodayCheckinAfterTrackingChange(habit, target, previousTrackingType);
 
-        return habitMapper.toDetailResponse(habit, target, categoryResponses);
+        return habitMapper.toDetailResponse(habit, target, categoryResponses, reward);
     }
 
     @Override
@@ -208,20 +209,20 @@ public class HabitServiceImpl implements HabitService {
     }
 
 
-    private void updateTodayCheckinAfterTrackingChange(HabitEntity habit,
-                                                       HabitTargetEntity target,
-                                                       TrackingType previousTrackingType) {
+    private RewardChangeResponse updateTodayCheckinAfterTrackingChange(HabitEntity habit,
+                                                                       HabitTargetEntity target,
+                                                                       TrackingType previousTrackingType) {
         LocalDate today = LocalDate.now();
         HabitCheckinEntity checkin = habitCheckinRepository.findByHabitIdAndCheckinDate(habit.getId(), today)
                         .orElse(null);
         if (checkin == null) {
-            return;
+            return null;
         }
         boolean oldCompleted = checkin.getCompleted();
         habitTrackingDomainService.reconcileCheckin(habit, target, checkin, previousTrackingType);
         boolean newCompleted = checkin.getCompleted();
         habitStreakService.updateStreaks(habit, oldCompleted, newCompleted);
-        completionRewardCoordinator.onCompletionChanged(
+        RewardChangeResponse reward = completionRewardCoordinator.onCompletionChanged(
             currentUserService.getCurrentUserId(),
             RewardSourceType.HABIT_COMPLETION,
             checkin.getId(),
@@ -231,6 +232,7 @@ public class HabitServiceImpl implements HabitService {
             habit.getCurrentStreak()
         );
         habitCheckinRepository.save(checkin);
+        return reward;
     }
 
     private void validateCategories(List<CategoryEntity> found, List<UUID> requestedIds, UUID userId) {

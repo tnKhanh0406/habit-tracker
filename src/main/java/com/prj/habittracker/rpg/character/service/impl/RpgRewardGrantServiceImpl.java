@@ -4,11 +4,13 @@ import com.prj.habittracker.common.enums.Difficulty;
 import com.prj.habittracker.common.enums.RewardGrantStatus;
 import com.prj.habittracker.common.enums.RewardSourceType;
 import com.prj.habittracker.rpg.character.config.RpgRewardCalculator;
+import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.dto.response.RpgReward;
 import com.prj.habittracker.rpg.character.entity.RpgRewardGrant;
 import com.prj.habittracker.rpg.character.repository.RpgRewardGrantRepository;
 import com.prj.habittracker.rpg.character.service.CharacterProgressionService;
 import com.prj.habittracker.rpg.character.service.RpgRewardGrantService;
+import com.prj.habittracker.rpg.character.service.RewardOperationResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,11 +28,12 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
 
     @Override
     @Transactional
-    public RpgRewardGrant applyHabitCompletion(UUID userId, UUID completionId, Difficulty difficulty, int streak) {
+    public RewardOperationResult applyHabitCompletion(UUID userId, UUID completionId, Difficulty difficulty, int streak) {
         Optional<RpgRewardGrant> existing = rewardGrantRepository.findBySourceTypeAndSourceId(RewardSourceType.HABIT_COMPLETION, completionId);
         if (existing.isPresent() && existing.get().getStatus() == RewardGrantStatus.APPLIED) {
-            return existing.get();
+            return noChange(userId);
         }
+        CharacterResponse before = characterProgressionService.getCharacter(userId);
         RpgReward reward = rewardCalculator.calculateHabit(difficulty, streak);
         RpgRewardGrant grant;
         if (existing.isPresent()) {
@@ -52,19 +55,20 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
                     .build();
         }
         rewardGrantRepository.save(grant);
-        characterProgressionService.applyReward(userId, reward.exp(), reward.coin());
-        return grant;
+        CharacterResponse after = characterProgressionService.applyReward(userId, reward.exp(), reward.coin());
+        return new RewardOperationResult(reward.exp(), reward.coin(), before.level(), after);
     }
 
     @Override
     @Transactional
-    public RpgRewardGrant applyTodoCompletion(UUID userId, UUID completionId, Difficulty difficulty) {
+    public RewardOperationResult applyTodoCompletion(UUID userId, UUID completionId, Difficulty difficulty) {
         Optional<RpgRewardGrant> existing = rewardGrantRepository.findBySourceTypeAndSourceId(RewardSourceType.TODO_COMPLETION, completionId);
 
         if (existing.isPresent() && existing.get().getStatus() == RewardGrantStatus.APPLIED) {
-            return existing.get();
+            return noChange(userId);
         }
 
+        CharacterResponse before = characterProgressionService.getCharacter(userId);
         RpgReward reward = rewardCalculator.calculateTodo(difficulty);
         RpgRewardGrant grant;
         if (existing.isPresent()) {
@@ -87,16 +91,16 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
 
         rewardGrantRepository.save(grant);
 
-        characterProgressionService.applyReward(userId, reward.exp(), reward.coin());
-        return grant;
+        CharacterResponse after = characterProgressionService.applyReward(userId, reward.exp(), reward.coin());
+        return new RewardOperationResult(reward.exp(), reward.coin(), before.level(), after);
     }
 
     @Override
     @Transactional
-    public void reverseReward(UUID userId, RewardSourceType sourceType, UUID sourceId) {
+    public RewardOperationResult reverseReward(UUID userId, RewardSourceType sourceType, UUID sourceId) {
         Optional<RpgRewardGrant> existing = rewardGrantRepository.findBySourceTypeAndSourceId(sourceType, sourceId);
         if (existing.isEmpty()) {
-            return;
+            return noChange(userId);
         }
         RpgRewardGrant grant = existing.get();
 
@@ -105,11 +109,18 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
         }
 
         if (grant.getStatus() == RewardGrantStatus.REVERSED) {
-            return;
+            return noChange(userId);
         }
 
-        characterProgressionService.reverseReward(userId, grant.getExpAmount(), grant.getCoinAmount());
+        CharacterResponse before = characterProgressionService.getCharacter(userId);
+        CharacterResponse after = characterProgressionService.reverseReward(userId, grant.getExpAmount(), grant.getCoinAmount());
         grant.setStatus(RewardGrantStatus.REVERSED);
         grant.setReversedAt(OffsetDateTime.now());
+        return new RewardOperationResult(-grant.getExpAmount(), -grant.getCoinAmount(), before.level(), after);
+    }
+
+    private RewardOperationResult noChange(UUID userId) {
+        CharacterResponse character = characterProgressionService.getCharacter(userId);
+        return new RewardOperationResult(0, 0, character.level(), character);
     }
 }

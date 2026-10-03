@@ -2,6 +2,7 @@ package com.prj.habittracker.rpg.character.service;
 
 import com.prj.habittracker.common.enums.Difficulty;
 import com.prj.habittracker.common.enums.RewardSourceType;
+import com.prj.habittracker.rpg.character.dto.response.RewardChangeResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,7 +13,7 @@ import java.util.UUID;
 public class CompletionRewardCoordinator {
     private final RpgRewardGrantService rewardGrantService;
 
-    public void onCompletionChanged(
+    public RewardChangeResponse onCompletionChanged(
             UUID userId,
             RewardSourceType sourceType,
             UUID sourceId,
@@ -23,12 +24,25 @@ public class CompletionRewardCoordinator {
     ) {
         if (!oldCompleted && newCompleted) {
             if (sourceType == RewardSourceType.HABIT_COMPLETION) {
-                rewardGrantService.applyHabitCompletion(userId, sourceId, difficulty, streak);
+                return toResponse(rewardGrantService.applyHabitCompletion(userId, sourceId, difficulty, streak));
             } else if (sourceType == RewardSourceType.TODO_COMPLETION) {
-                rewardGrantService.applyTodoCompletion(userId, sourceId, difficulty);
+                return toResponse(rewardGrantService.applyTodoCompletion(userId, sourceId, difficulty));
             }
         } else if (oldCompleted && !newCompleted) {
-            rewardGrantService.reverseReward(userId, sourceType, sourceId);
+            return toResponse(rewardGrantService.reverseReward(userId, sourceType, sourceId));
         }
+        return null;
+    }
+
+    private RewardChangeResponse toResponse(RewardOperationResult result) {
+        return new RewardChangeResponse(
+                result.expDelta(),
+                result.coinDelta(),
+                result.character().exp(),
+                result.character().coin(),
+                result.character().level(),
+                result.character().level() > result.previousLevel(),
+                result.character().level() < result.previousLevel()
+        );
     }
 }

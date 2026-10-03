@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import com.prj.habittracker.rpg.character.dto.response.RewardChangeResponse;
 
 public record TodoSummaryResponse(
         UUID id,
@@ -11,6 +12,7 @@ public record TodoSummaryResponse(
         Boolean completed,
         LocalDate dueDate,
         LocalTime dueTime,
-        List<TodoSubtaskResponse> subtasks
+        List<TodoSubtaskResponse> subtasks,
+        RewardChangeResponse reward
 ) {
 }

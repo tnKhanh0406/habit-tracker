@@ -6,6 +6,7 @@ import com.prj.habittracker.category.dto.response.CategoryResponse;
 
 import java.util.List;
 import java.util.UUID;
+import com.prj.habittracker.rpg.character.dto.response.RewardChangeResponse;
 
 public record BasicHabitInformationResponse(
         UUID id,
@@ -17,5 +18,6 @@ public record BasicHabitInformationResponse(
         TrackingType trackingType,
         List<CategoryResponse> categories,
         HabitTargetResponse target,
-        Integer streaks
+        Integer streaks,
+        RewardChangeResponse reward
 ) {}

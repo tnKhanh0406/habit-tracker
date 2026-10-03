@@ -24,6 +24,12 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
     }
 
     @Override
+    public CharacterResponse getCharacter(UUID userId) {
+        PlayerCharacterEntity character = getPlayerCharacter(userId);
+        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+    }
+
+    @Override
     public CharacterResponse applyReward(UUID userId, long exp, long coin) {
         if (exp < 0 || coin < 0) {
             throw new IllegalArgumentException("Reward cannot be negative");
