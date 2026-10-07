@@ -1,6 +1,8 @@
 package com.prj.habittracker.rpg.character.service.impl;
 
 import com.prj.habittracker.common.security.CurrentUserService;
+import com.prj.habittracker.reward.entity.RewardEntity;
+import com.prj.habittracker.reward.repository.RewardRepository;
 import com.prj.habittracker.rpg.character.config.LevelPolicy;
 import com.prj.habittracker.rpg.character.dto.request.AllocateStatRequest;
 import com.prj.habittracker.rpg.character.dto.response.AllocateStatResponse;
@@ -21,6 +23,7 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
     private final PlayerCharacterRepository playerCharacterRepository;
     private final CurrentUserService currentUserService;
     private final LevelPolicy levelPolicy;
+    private final RewardRepository rewardRepository;
 
     @Override
     public CharacterResponse getCharacter() {
@@ -93,6 +96,23 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
                 saved.getAgility(),
                 saved.getStatPoints()
         );
+    }
+
+    @Override
+    @Transactional
+    public long redeemReward(UUID rewardId) {
+        UUID userId = currentUserService.getCurrentUserId();
+        RewardEntity reward = rewardRepository.findByIdAndUserId(rewardId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Reward not found: " + rewardId));
+        PlayerCharacterEntity character = playerCharacterRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Player character not found for user ID: " + userId));
+        if (character.getCoin() < reward.getCost()) {
+            throw new IllegalStateException("Not enough coins to redeem reward");
+        }
+        long remainingCoins = character.getCoin() - reward.getCost();
+        character.setCoin(remainingCoins);
+        playerCharacterRepository.save(character);
+        return remainingCoins;
     }
 
 

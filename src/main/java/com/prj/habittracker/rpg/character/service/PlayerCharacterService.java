@@ -10,4 +10,5 @@ public interface PlayerCharacterService {
     CharacterResponse getCharacter();
     CharacterResponse createCharacter(UUID userId);
     AllocateStatResponse allocateStat(AllocateStatRequest request);
+    long redeemReward(UUID rewardId);
 }
