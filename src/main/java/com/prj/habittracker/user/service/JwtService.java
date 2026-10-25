@@ -50,6 +50,6 @@ public class JwtService {
 
         String token = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
 
-        return new TokenResponse(token, "Bearer", ttl.toSeconds());
+        return new TokenResponse(token, "Bearer", ttl.toSeconds(), null);
     }
 }

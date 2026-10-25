@@ -2,6 +2,7 @@ package com.prj.habittracker.habit.repository;
 
 import com.prj.habittracker.habit.dto.response.HabitSummaryResponse;
 import com.prj.habittracker.habit.entity.HabitEntity;
+import com.prj.habittracker.common.enums.HabitStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,20 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
+    List<HabitEntity> findAllByUserIdAndStatus(UUID userId, HabitStatus status);
+
+    @Query("""
+        SELECT DISTINCT h
+        FROM HabitEntity h
+        LEFT JOIN FETCH h.schedule s
+        LEFT JOIN FETCH s.weekdays
+        LEFT JOIN FETCH h.target
+        WHERE h.user.id = :userId
+        AND h.status = :status
+    """)
+    List<HabitEntity> findAllForPenalty(@Param("userId") UUID userId,
+                                        @Param("status") HabitStatus status);
+
     @Query("""
         SELECT new com.prj.habittracker.habit.dto.response.HabitSummaryResponse(
             h.id,

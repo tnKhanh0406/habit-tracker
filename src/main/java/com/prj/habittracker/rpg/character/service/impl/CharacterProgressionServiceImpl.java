@@ -1,6 +1,5 @@
 package com.prj.habittracker.rpg.character.service.impl;
 
-import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.rpg.character.config.LevelPolicy;
 import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
@@ -15,7 +14,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CharacterProgressionServiceImpl implements CharacterProgressionService {
     private final PlayerCharacterRepository playerCharacterRepository;
-    private final CurrentUserService currentUserService;
     private final LevelPolicy levelPolicy;
 
     private PlayerCharacterEntity getPlayerCharacter(UUID userId) {
@@ -26,6 +24,16 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
     @Override
     public CharacterResponse getCharacter(UUID userId) {
         PlayerCharacterEntity character = getPlayerCharacter(userId);
+        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+    }
+
+    @Override
+    public CharacterResponse applyHpDamage(UUID userId, int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("HP damage must be greater than 0");
+        }
+        PlayerCharacterEntity character = getPlayerCharacter(userId);
+        character.setHp(Math.max(0, character.getHp() - amount));
         return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
     }
 

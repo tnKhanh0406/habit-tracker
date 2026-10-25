@@ -22,6 +22,8 @@ public interface TodoRepository extends JpaRepository<TodoEntity, UUID> {
     @EntityGraph(attributePaths = "subtasks")
     List<TodoEntity> findAllByUserId(UUID userId);
 
+    List<TodoEntity> findAllByUserIdAndCompletedFalseAndDueDateLessThanEqual(UUID userId, java.time.LocalDate date);
+
     @Modifying
     @Query("DELETE FROM TodoEntity t WHERE t.id = :todoId AND t.user.id = :userId")
     int deleteByIdAndUserId(UUID todoId, UUID userId);

@@ -126,6 +126,7 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
+    @Transactional
     public void deleteTodo(UUID todoId) {
         int deleted = todoRepository.deleteByIdAndUserId(todoId, currentUserService.getCurrentUserId());
         if (deleted == 0) {

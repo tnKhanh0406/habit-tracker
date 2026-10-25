@@ -201,6 +201,7 @@ public class HabitServiceImpl implements HabitService {
     }
 
     @Override
+    @Transactional
     public void deleteHabit(UUID habitId) {
         int deleted = habitRepository.deleteByIdAndUserId(habitId, currentUserService.getCurrentUserId());
         if (deleted == 0) {

@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -41,6 +42,9 @@ public class UserEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "last_login_date")
+    private LocalDate lastLoginDate;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

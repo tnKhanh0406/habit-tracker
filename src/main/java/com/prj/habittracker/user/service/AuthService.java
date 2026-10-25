@@ -9,6 +9,8 @@ import com.prj.habittracker.user.dto.response.UserResponse;
 import com.prj.habittracker.user.entity.UserEntity;
 import com.prj.habittracker.user.repository.UserRepository;
 import com.prj.habittracker.rpg.character.service.PlayerCharacterService;
+import com.prj.habittracker.rpg.character.dto.response.PenaltySettlementResponse;
+import com.prj.habittracker.rpg.character.service.LoginPenaltyService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -26,17 +31,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final PlayerCharacterService playerCharacterService;
+    private final LoginPenaltyService loginPenaltyService;
     private final String dummyPasswordHash;
 
     public AuthService(UserRepository users,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       PlayerCharacterService playerCharacterService) {
+                       PlayerCharacterService playerCharacterService,
+                       LoginPenaltyService loginPenaltyService) {
 
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.playerCharacterService = playerCharacterService;
+        this.loginPenaltyService = loginPenaltyService;
 
         this.dummyPasswordHash = passwordEncoder.encode(
                 UUID.randomUUID().toString());
@@ -68,7 +76,7 @@ public class AuthService {
         return UserResponse.from(savedUser);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public TokenResponse login(LoginRequest request) {
         checkPasswordLength(request.password());
 
@@ -91,7 +99,23 @@ public class AuthService {
                     "Email hoặc mật khẩu không hợp lệ");
         }
 
-        return jwtService.issue(user);
+        LocalDate today = currentDate(user);
+        PenaltySettlementResponse penalty = loginPenaltyService.settle(user, today);
+        TokenResponse token = jwtService.issue(user);
+        return new TokenResponse(
+                token.accessToken(),
+                token.tokenType(),
+                token.expiresIn(),
+                penalty
+        );
+    }
+
+    private LocalDate currentDate(UserEntity user) {
+        try {
+            return LocalDate.now(ZoneId.of(user.getTimezone()));
+        } catch (DateTimeException | NullPointerException exception) {
+            return LocalDate.now();
+        }
     }
 
     @Transactional(readOnly = true)

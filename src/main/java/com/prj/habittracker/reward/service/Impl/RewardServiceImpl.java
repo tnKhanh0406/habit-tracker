@@ -12,6 +12,7 @@ import com.prj.habittracker.reward.service.RewardService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -62,6 +63,7 @@ public class RewardServiceImpl implements RewardService {
     }
 
     @Override
+    @Transactional
     public void deleteReward(UUID rewardId) {
         int deleted = rewardRepository.deleteByIdAndUserId(rewardId, currentUserService.getCurrentUserId());
         if (deleted == 0) {
