@@ -11,6 +11,7 @@ import com.prj.habittracker.rpg.character.repository.RpgRewardGrantRepository;
 import com.prj.habittracker.rpg.character.service.CharacterProgressionService;
 import com.prj.habittracker.rpg.character.service.RpgRewardGrantService;
 import com.prj.habittracker.rpg.character.service.RewardOperationResult;
+import com.prj.habittracker.rpg.skill.service.SkillEffectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
     private final RpgRewardCalculator rewardCalculator;
     private final RpgRewardGrantRepository rewardGrantRepository;
     private final CharacterProgressionService characterProgressionService;
+    private final SkillEffectService skillEffectService;
 
     @Override
     @Transactional
@@ -34,7 +36,12 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
             return noChange(userId);
         }
         CharacterResponse before = characterProgressionService.getCharacter(userId);
-        RpgReward reward = rewardCalculator.calculateHabit(difficulty, streak);
+        RpgReward reward = skillEffectService.applyCompletionEffects(
+                userId,
+                RewardSourceType.HABIT_COMPLETION,
+                completionId,
+                rewardCalculator.calculateHabit(difficulty, streak)
+        );
         RpgRewardGrant grant;
         if (existing.isPresent()) {
             grant = existing.get();
@@ -69,7 +76,12 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
         }
 
         CharacterResponse before = characterProgressionService.getCharacter(userId);
-        RpgReward reward = rewardCalculator.calculateTodo(difficulty);
+        RpgReward reward = skillEffectService.applyCompletionEffects(
+                userId,
+                RewardSourceType.TODO_COMPLETION,
+                completionId,
+                rewardCalculator.calculateTodo(difficulty)
+        );
         RpgRewardGrant grant;
         if (existing.isPresent()) {
             grant = existing.get();

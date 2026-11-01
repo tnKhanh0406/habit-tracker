@@ -1,11 +1,14 @@
 package com.prj.habittracker.rpg.character.dto.response;
 
+import com.prj.habittracker.common.enums.CharacterClass;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 
 import java.util.UUID;
 
 public record CharacterResponse(
         UUID id,
+
+        CharacterClass characterClass,
 
         int level,
         long exp,
@@ -34,6 +37,8 @@ public record CharacterResponse(
 
         return new CharacterResponse(
                 character.getId(),
+
+                character.getCharacterClass(),
 
                 character.getLevel(),
                 character.getExp(),

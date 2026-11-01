@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface TodoRepository extends JpaRepository<TodoEntity, UUID> {
+    boolean existsByIdAndUserId(UUID id, UUID userId);
     @Query("""
         SELECT t FROM TodoEntity t
         LEFT JOIN FETCH t.subtasks

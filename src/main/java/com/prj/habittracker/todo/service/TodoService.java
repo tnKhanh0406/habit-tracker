@@ -6,7 +6,6 @@ import com.prj.habittracker.todo.dto.request.UpdateTodoInformationRequest;
 import com.prj.habittracker.todo.dto.response.TodoInformationResponse;
 import com.prj.habittracker.todo.dto.response.TodoSubtaskResponse;
 import com.prj.habittracker.todo.dto.response.TodoSummaryResponse;
-import com.prj.habittracker.user.entity.UserEntity;
 
 import java.util.List;
 import java.util.UUID;

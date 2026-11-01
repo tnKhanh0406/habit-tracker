@@ -1,10 +1,12 @@
 package com.prj.habittracker.rpg.character.entity;
 
+import com.prj.habittracker.common.enums.CharacterClass;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -74,6 +76,13 @@ public class PlayerCharacterEntity {
 
     @Column(name = "max_level_reached", nullable = false)
     private Integer maxLevelReached;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "character_class", length = 30)
+    private CharacterClass characterClass;
+
+    @Column(name = "mana_regenerated_at", nullable = false)
+    private LocalDate manaRegeneratedAt;
 
     @Version
     private Long version;

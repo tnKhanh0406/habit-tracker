@@ -1,10 +1,12 @@
 package com.prj.habittracker.rpg.character.controller;
 
 import com.prj.habittracker.rpg.character.dto.request.AllocateStatRequest;
+import com.prj.habittracker.rpg.character.dto.request.SelectCharacterClassRequest;
 import com.prj.habittracker.rpg.character.dto.response.AllocateStatResponse;
 import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.service.PlayerCharacterService;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -28,5 +30,10 @@ public class PlayerCharacterController {
     @PostMapping("redeem-reward/{rewardId}")
     public long redeemReward(@PathVariable String rewardId) {
         return playerCharacterService.redeemReward(UUID.fromString(rewardId));
+    }
+
+    @PostMapping("/class")
+    public CharacterResponse selectClass(@RequestBody @Valid SelectCharacterClassRequest request) {
+        return playerCharacterService.selectClass(request);
     }
 }

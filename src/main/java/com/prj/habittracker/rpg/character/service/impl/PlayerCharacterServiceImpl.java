@@ -5,6 +5,7 @@ import com.prj.habittracker.reward.entity.RewardEntity;
 import com.prj.habittracker.reward.repository.RewardRepository;
 import com.prj.habittracker.rpg.character.config.LevelPolicy;
 import com.prj.habittracker.rpg.character.dto.request.AllocateStatRequest;
+import com.prj.habittracker.rpg.character.dto.request.SelectCharacterClassRequest;
 import com.prj.habittracker.rpg.character.dto.response.AllocateStatResponse;
 import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -61,6 +63,7 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
                 .agility(1)
 
                 .statPoints(0)
+                .manaRegeneratedAt(LocalDate.now())
                 .build();
 
         PlayerCharacterEntity saved = playerCharacterRepository.save(character);
@@ -113,6 +116,19 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
         character.setCoin(remainingCoins);
         playerCharacterRepository.save(character);
         return remainingCoins;
+    }
+
+    @Override
+    @Transactional
+    public CharacterResponse selectClass(SelectCharacterClassRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        PlayerCharacterEntity character = playerCharacterRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Player character not found for user ID: " + userId));
+        if (character.getCharacterClass() != null) {
+            throw new IllegalStateException("Character class has already been selected");
+        }
+        character.setCharacterClass(request.characterClass());
+        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
     }
 
 

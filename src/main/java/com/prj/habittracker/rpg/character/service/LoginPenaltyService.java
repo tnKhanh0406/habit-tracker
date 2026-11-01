@@ -16,6 +16,7 @@ import com.prj.habittracker.habit.service.HabitScheduleService;
 import com.prj.habittracker.todo.entity.TodoEntity;
 import com.prj.habittracker.todo.repository.TodoRepository;
 import com.prj.habittracker.user.entity.UserEntity;
+import com.prj.habittracker.rpg.skill.service.SkillEffectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ public class LoginPenaltyService {
     private final CharacterProgressionService characterProgressionService;
     private final PlayerCharacterRepository playerCharacterRepository;
     private final PlayerCharacterService playerCharacterService;
+    private final SkillEffectService skillEffectService;
 
     @Transactional
     public PenaltySettlementResponse settle(UserEntity user, LocalDate today) {
@@ -63,9 +65,12 @@ public class LoginPenaltyService {
             return null;
         }
 
-        CharacterResponse character = characterProgressionService.applyHpDamage(userId, penaltyCount);
+        int finalDamage = skillEffectService.applyPenaltyEffects(userId, penaltyCount);
+        CharacterResponse character = finalDamage > 0
+                ? characterProgressionService.applyHpDamage(userId, finalDamage)
+                : characterProgressionService.getCharacter(userId);
         return new PenaltySettlementResponse(
-                -penaltyCount,
+                -finalDamage,
                 character.hp(),
                 missedHabits,
                 overdueTodos
