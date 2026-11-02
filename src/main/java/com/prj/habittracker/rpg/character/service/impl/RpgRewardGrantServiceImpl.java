@@ -40,6 +40,7 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
                 userId,
                 RewardSourceType.HABIT_COMPLETION,
                 completionId,
+                difficulty,
                 streak,
                 rewardCalculator.calculateHabit(difficulty, streak)
         );
@@ -81,6 +82,7 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
                 userId,
                 RewardSourceType.TODO_COMPLETION,
                 completionId,
+                difficulty,
                 0,
                 rewardCalculator.calculateTodo(difficulty)
         );

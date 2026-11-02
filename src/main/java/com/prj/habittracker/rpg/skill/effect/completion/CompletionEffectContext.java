@@ -1,7 +1,13 @@
 package com.prj.habittracker.rpg.skill.effect.completion;
 
 import com.prj.habittracker.common.enums.RewardSourceType;
+import com.prj.habittracker.common.enums.Difficulty;
 
 import java.util.UUID;
 
-public record CompletionEffectContext(RewardSourceType sourceType, UUID sourceId, int streak) {}
+public record CompletionEffectContext(
+        RewardSourceType sourceType,
+        UUID sourceId,
+        Difficulty difficulty,
+        int streak
+) {}

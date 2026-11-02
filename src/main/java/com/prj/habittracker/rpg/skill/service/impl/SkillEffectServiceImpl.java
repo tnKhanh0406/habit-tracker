@@ -1,6 +1,7 @@
 package com.prj.habittracker.rpg.skill.service.impl;
 
 import com.prj.habittracker.common.enums.RewardSourceType;
+import com.prj.habittracker.common.enums.Difficulty;
 import com.prj.habittracker.common.enums.SkillCastStatus;
 import com.prj.habittracker.rpg.character.dto.response.RpgReward;
 import com.prj.habittracker.rpg.skill.effect.completion.CompletionEffectContext;
@@ -30,10 +31,11 @@ public class SkillEffectServiceImpl implements SkillEffectService {
 
     @Override
     @Transactional
-    public RpgReward applyCompletionEffects(UUID userId, RewardSourceType sourceType, UUID sourceId, int streak, RpgReward baseReward) {
+    public RpgReward applyCompletionEffects(UUID userId, RewardSourceType sourceType, UUID sourceId,
+                                            Difficulty difficulty, int streak, RpgReward baseReward) {
         OffsetDateTime now = OffsetDateTime.now();
         RpgReward reward = baseReward;
-        CompletionEffectContext context = new CompletionEffectContext(sourceType, sourceId, streak);
+        CompletionEffectContext context = new CompletionEffectContext(sourceType, sourceId, difficulty, streak);
 
         for (SkillCastEntity cast : skillCastRepository.findAllActive(userId, now)) {
             boolean applied = false;

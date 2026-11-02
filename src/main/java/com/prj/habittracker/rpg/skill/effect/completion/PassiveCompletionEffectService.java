@@ -1,6 +1,7 @@
 package com.prj.habittracker.rpg.skill.effect.completion;
 
 import com.prj.habittracker.common.enums.RewardSourceType;
+import com.prj.habittracker.common.enums.Difficulty;
 import com.prj.habittracker.common.enums.SkillEffectType;
 import com.prj.habittracker.common.enums.SkillType;
 import com.prj.habittracker.rpg.character.dto.response.RpgReward;
@@ -22,7 +23,7 @@ public class PassiveCompletionEffectService {
     private final SkillRepository skillRepository;
 
     public RpgReward apply(UUID userId, CompletionEffectContext context, RpgReward reward) {
-        if (context.sourceType() != RewardSourceType.HABIT_COMPLETION || context.streak() <= 0) {
+        if (context.sourceType() != RewardSourceType.HABIT_COMPLETION) {
             return reward;
         }
         var character = playerCharacterRepository.findByUserId(userId).orElse(null);
@@ -30,16 +31,27 @@ public class PassiveCompletionEffectService {
             return reward;
         }
 
-        return skillRepository.findAllByCharacterClassAndSkillTypeAndEnabledTrue(
+        var effects = skillRepository.findAllByCharacterClassAndSkillTypeAndEnabledTrue(
                         character.getCharacterClass(), SkillType.PASSIVE).stream()
                 .flatMap(skill -> skill.getEffects().stream())
+                .toList();
+
+        BigDecimal bonusPercent = effects.stream()
                 .filter(effect -> effect.getEffectType() == SkillEffectType.STREAK_BONUS_EXP)
                 .filter(effect -> effect.getConditionValue() != null
                         && context.streak() >= effect.getConditionValue().intValue())
                 .max(Comparator.comparing(SkillEffectEntity::getConditionValue))
-                .map(effect -> new RpgReward(
-                        reward.exp() + percentage(reward.exp(), effect.getValue()), reward.coin()))
-                .orElse(reward);
+                .map(SkillEffectEntity::getValue)
+                .orElse(BigDecimal.ZERO);
+
+        if (context.difficulty() == Difficulty.HARD || context.difficulty() == Difficulty.EXTREME) {
+            bonusPercent = bonusPercent.add(effects.stream()
+                    .filter(effect -> effect.getEffectType() == SkillEffectType.DIFFICULT_HABIT_BONUS_EXP)
+                    .map(SkillEffectEntity::getValue)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add));
+        }
+
+        return new RpgReward(reward.exp() + percentage(reward.exp(), bonusPercent), reward.coin());
     }
 
     private long percentage(long base, BigDecimal percent) {
