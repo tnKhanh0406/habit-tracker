@@ -17,6 +17,7 @@ import com.prj.habittracker.todo.entity.TodoEntity;
 import com.prj.habittracker.todo.repository.TodoRepository;
 import com.prj.habittracker.user.entity.UserEntity;
 import com.prj.habittracker.rpg.skill.service.SkillEffectService;
+import com.prj.habittracker.rpg.skill.effect.penalty.PenaltyAdjustment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,14 +59,20 @@ public class LoginPenaltyService {
             return null;
         }
 
-        int missedHabits = settleMissedHabits(userId, previousLoginDate);
+        List<HabitEntity> missedHabitEntities = settleMissedHabits(userId, previousLoginDate);
+        int missedHabits = missedHabitEntities.size();
         int overdueTodos = settleOverdueTodos(userId, today, currentTime(user));
         int penaltyCount = missedHabits + overdueTodos;
         if (penaltyCount == 0) {
             return null;
         }
 
-        int finalDamage = skillEffectService.applyPenaltyEffects(userId, penaltyCount);
+        Set<UUID> missedHabitIds = missedHabitEntities.stream().map(HabitEntity::getId).collect(Collectors.toSet());
+        PenaltyAdjustment adjustment = skillEffectService.applyPenaltyEffects(userId, penaltyCount, missedHabitIds);
+        missedHabitEntities.stream()
+                .filter(habit -> !adjustment.protectedHabitIds().contains(habit.getId()))
+                .forEach(habit -> habit.setCurrentStreak(0));
+        int finalDamage = adjustment.damage();
         CharacterResponse character = finalDamage > 0
                 ? characterProgressionService.applyHpDamage(userId, finalDamage)
                 : characterProgressionService.getCharacter(userId);
@@ -77,11 +84,11 @@ public class LoginPenaltyService {
         );
     }
 
-    private int settleMissedHabits(UUID userId, LocalDate date) {
-        int count = 0;
+    private List<HabitEntity> settleMissedHabits(UUID userId, LocalDate date) {
+        List<HabitEntity> missedHabits = new java.util.ArrayList<>();
         List<HabitEntity> habits = habitRepository.findAllForPenalty(userId, HabitStatus.ACTIVE);
         if (habits.isEmpty()) {
-            return 0;
+            return List.of();
         }
 
         List<UUID> habitIds = habits.stream().map(HabitEntity::getId).toList();
@@ -122,10 +129,9 @@ public class LoginPenaltyService {
             }
 
             savePenaltyEvent(userId, PenaltySourceType.HABIT_MISSED_DAY, sourceId, date);
-            habit.setCurrentStreak(0);
-            count++;
+            missedHabits.add(habit);
         }
-        return count;
+        return missedHabits;
     }
 
     private UUID missedHabitSourceId(UUID habitId, LocalDate date) {

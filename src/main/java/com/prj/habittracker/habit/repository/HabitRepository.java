@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface HabitRepository extends JpaRepository<HabitEntity, UUID> {
+    boolean existsByIdAndUserId(UUID id, UUID userId);
     List<HabitEntity> findAllByUserIdAndStatus(UUID userId, HabitStatus status);
 
     @Query("""

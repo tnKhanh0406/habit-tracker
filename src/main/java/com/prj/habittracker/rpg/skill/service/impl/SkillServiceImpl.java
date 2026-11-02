@@ -109,11 +109,11 @@ public class SkillServiceImpl implements SkillService {
         boolean active = skillCastRepository.existsActive(userId, skill.getId(), now);
         return new SkillResponse(
                 skill.getId(), skill.getCode(), skill.getName(), skill.getDescription(),
-                skill.getCharacterClass(), skill.getManaCost(), skill.getRequiredLevel(),
+                skill.getCharacterClass(), skill.getSkillType(), skill.getManaCost(), skill.getRequiredLevel(),
                 skill.getCooldownSeconds(), skill.getTargetType(), character.getLevel() >= skill.getRequiredLevel(),
                 active, remainingCooldown,
                 skill.getEffects().stream().map(effect -> new SkillEffectResponse(
-                        effect.getEffectType(), effect.getValue(), effect.getValueType(), effect.getDurationType()
+                        effect.getEffectType(), effect.getValue(), effect.getConditionValue(), effect.getValueType(), effect.getDurationType()
                 )).toList()
         );
     }
@@ -121,7 +121,7 @@ public class SkillServiceImpl implements SkillService {
     private SkillCastResponse toCastResponse(SkillCastEntity cast, PlayerCharacterEntity character) {
         return new SkillCastResponse(
                 cast.getId(), cast.getSkill().getCode(), cast.getStatus(), cast.getManaSpent(),
-                character.getMp(), character.getHp(), cast.getExpiresAt()
+                character.getMp(), character.getHp(), character.getCoin(), cast.getExpiresAt()
         );
     }
 }

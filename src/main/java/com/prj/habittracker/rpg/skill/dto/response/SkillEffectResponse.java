@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 public record SkillEffectResponse(
         SkillEffectType type,
         BigDecimal value,
+        BigDecimal conditionValue,
         SkillValueType valueType,
         SkillDurationType durationType
 ) {}

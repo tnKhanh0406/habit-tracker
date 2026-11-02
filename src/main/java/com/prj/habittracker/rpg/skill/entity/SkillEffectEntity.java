@@ -29,6 +29,9 @@ public class SkillEffectEntity {
     @Column(name = "effect_value", nullable = false, precision = 12, scale = 2)
     private BigDecimal value;
 
+    @Column(name = "condition_value", precision = 12, scale = 2)
+    private BigDecimal conditionValue;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "value_type", nullable = false, length = 20)
     private SkillValueType valueType;

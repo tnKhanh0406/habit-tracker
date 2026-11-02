@@ -12,7 +12,9 @@ public class BonusExpEffectHandler implements CompletionSkillEffectHandler {
     public SkillEffectType supports() { return SkillEffectType.BONUS_EXP; }
 
     @Override
-    public boolean isApplicable(SkillCastEntity cast, CompletionEffectContext context) { return true; }
+    public boolean isApplicable(SkillCastEntity cast, CompletionEffectContext context) {
+        return CompletionTargetMatcher.matches(cast, context);
+    }
 
     @Override
     public RpgReward apply(SkillEffectEntity effect, RpgReward reward) {

@@ -12,5 +12,6 @@ public record SkillCastResponse(
         int manaSpent,
         int currentMana,
         int currentHp,
+        long currentCoin,
         OffsetDateTime expiresAt
 ) {}

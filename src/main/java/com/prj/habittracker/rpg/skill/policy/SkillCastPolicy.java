@@ -4,6 +4,7 @@ import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.skill.entity.SkillCastEntity;
 import com.prj.habittracker.rpg.skill.entity.SkillEntity;
 import com.prj.habittracker.rpg.skill.repository.SkillCastRepository;
+import com.prj.habittracker.common.enums.SkillType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,9 @@ public class SkillCastPolicy {
     private final SkillCastRepository skillCastRepository;
 
     public void validate(UUID userId, PlayerCharacterEntity character, SkillEntity skill, OffsetDateTime now) {
+        if (skill.getSkillType() != SkillType.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Passive skills cannot be cast");
+        }
         if (character.getCharacterClass() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Select a character class first");
         }
