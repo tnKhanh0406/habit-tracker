@@ -9,4 +9,8 @@ public interface CompletionSkillEffectHandler {
     SkillEffectType supports();
     boolean isApplicable(SkillCastEntity cast, CompletionEffectContext context);
     RpgReward apply(SkillEffectEntity effect, RpgReward reward);
+
+    default RpgReward apply(SkillEffectEntity effect, SkillCastEntity cast, RpgReward reward) {
+        return apply(effect, reward);
+    }
 }

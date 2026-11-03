@@ -44,7 +44,7 @@ public class SkillEffectServiceImpl implements SkillEffectService {
             for (var effect : cast.getSkill().getEffects()) {
                 var handler = completionRegistry.find(effect.getEffectType()).orElse(null);
                 if (handler != null && handler.isApplicable(cast, context)) {
-                    reward = handler.apply(effect, reward);
+                    reward = handler.apply(effect, cast, reward);
                     applied = true;
                 }
             }
