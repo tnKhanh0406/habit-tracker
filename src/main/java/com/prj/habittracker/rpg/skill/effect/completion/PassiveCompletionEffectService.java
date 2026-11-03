@@ -23,9 +23,6 @@ public class PassiveCompletionEffectService {
     private final SkillRepository skillRepository;
 
     public RpgReward apply(UUID userId, CompletionEffectContext context, RpgReward reward) {
-        if (context.sourceType() != RewardSourceType.HABIT_COMPLETION) {
-            return reward;
-        }
         var character = playerCharacterRepository.findByUserId(userId).orElse(null);
         if (character == null || character.getCharacterClass() == null) {
             return reward;
@@ -36,22 +33,34 @@ public class PassiveCompletionEffectService {
                 .flatMap(skill -> skill.getEffects().stream())
                 .toList();
 
-        BigDecimal bonusPercent = effects.stream()
+        BigDecimal expBonusPercent = effects.stream()
                 .filter(effect -> effect.getEffectType() == SkillEffectType.STREAK_BONUS_EXP)
+                .filter(effect -> context.sourceType() == RewardSourceType.HABIT_COMPLETION)
                 .filter(effect -> effect.getConditionValue() != null
                         && context.streak() >= effect.getConditionValue().intValue())
                 .max(Comparator.comparing(SkillEffectEntity::getConditionValue))
                 .map(SkillEffectEntity::getValue)
                 .orElse(BigDecimal.ZERO);
 
-        if (context.difficulty() == Difficulty.HARD || context.difficulty() == Difficulty.EXTREME) {
-            bonusPercent = bonusPercent.add(effects.stream()
+        if (context.sourceType() == RewardSourceType.HABIT_COMPLETION
+                && (context.difficulty() == Difficulty.HARD || context.difficulty() == Difficulty.EXTREME)) {
+            expBonusPercent = expBonusPercent.add(effects.stream()
                     .filter(effect -> effect.getEffectType() == SkillEffectType.DIFFICULT_HABIT_BONUS_EXP)
                     .map(SkillEffectEntity::getValue)
                     .reduce(BigDecimal.ZERO, BigDecimal::add));
         }
 
-        return new RpgReward(reward.exp() + percentage(reward.exp(), bonusPercent), reward.coin());
+        BigDecimal comboBonusPercent = effects.stream()
+                .filter(effect -> effect.getEffectType() == SkillEffectType.DAILY_COMBO_BONUS_REWARD)
+                .filter(effect -> context.sourceType() == RewardSourceType.TODO_COMPLETION)
+                .map(effect -> effect.getValue()
+                        .multiply(BigDecimal.valueOf(context.previousDailyCompletions()))
+                        .min(effect.getConditionValue()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new RpgReward(
+                reward.exp() + percentage(reward.exp(), expBonusPercent.add(comboBonusPercent)),
+                reward.coin() + percentage(reward.coin(), comboBonusPercent));
     }
 
     private long percentage(long base, BigDecimal percent) {

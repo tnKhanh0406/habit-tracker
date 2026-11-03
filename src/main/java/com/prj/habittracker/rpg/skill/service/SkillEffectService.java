@@ -10,6 +10,7 @@ import com.prj.habittracker.rpg.skill.effect.penalty.PenaltyAdjustment;
 
 public interface SkillEffectService {
     RpgReward applyCompletionEffects(UUID userId, RewardSourceType sourceType, UUID sourceId,
-                                     Difficulty difficulty, int streak, RpgReward baseReward);
+                                     Difficulty difficulty, int streak, boolean completedBeforeDeadline,
+                                     int previousDailyCompletions, RpgReward baseReward);
     PenaltyAdjustment applyPenaltyEffects(UUID userId, int rawDamage, Set<UUID> missedHabitIds);
 }

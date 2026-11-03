@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.time.OffsetDateTime;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -155,6 +156,11 @@ public class TodoServiceImpl implements TodoService {
                 .orElseThrow(() -> new EntityNotFoundException("Todo not found"));
         boolean oldCompleted = todo.getCompleted();
         todo.setCompleted(request.completed());
+        if (!oldCompleted && todo.getCompleted()) {
+            todo.setCompletedAt(OffsetDateTime.now());
+        } else if (oldCompleted && !todo.getCompleted()) {
+            todo.setCompletedAt(null);
+        }
         todoRepository.save(todo);
         RewardChangeResponse reward = completionRewardCoordinator.onCompletionChanged(
                 currentUserService.getCurrentUserId(),

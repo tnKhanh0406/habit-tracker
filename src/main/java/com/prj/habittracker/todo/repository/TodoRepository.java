@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.OffsetDateTime;
 
 public interface TodoRepository extends JpaRepository<TodoEntity, UUID> {
     boolean existsByIdAndUserId(UUID id, UUID userId);
@@ -24,6 +25,9 @@ public interface TodoRepository extends JpaRepository<TodoEntity, UUID> {
     List<TodoEntity> findAllByUserId(UUID userId);
 
     List<TodoEntity> findAllByUserIdAndCompletedFalseAndDueDateLessThanEqual(UUID userId, java.time.LocalDate date);
+
+    long countByUserIdAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+            UUID userId, OffsetDateTime start, OffsetDateTime end);
 
     @Modifying
     @Query("DELETE FROM TodoEntity t WHERE t.id = :todoId AND t.user.id = :userId")

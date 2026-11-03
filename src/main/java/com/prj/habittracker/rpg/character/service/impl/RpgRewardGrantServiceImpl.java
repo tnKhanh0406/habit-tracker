@@ -12,11 +12,16 @@ import com.prj.habittracker.rpg.character.service.CharacterProgressionService;
 import com.prj.habittracker.rpg.character.service.RpgRewardGrantService;
 import com.prj.habittracker.rpg.character.service.RewardOperationResult;
 import com.prj.habittracker.rpg.skill.service.SkillEffectService;
+import com.prj.habittracker.todo.entity.TodoEntity;
+import com.prj.habittracker.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.DateTimeException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,6 +32,7 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
     private final RpgRewardGrantRepository rewardGrantRepository;
     private final CharacterProgressionService characterProgressionService;
     private final SkillEffectService skillEffectService;
+    private final TodoRepository todoRepository;
 
     @Override
     @Transactional
@@ -42,6 +48,8 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
                 completionId,
                 difficulty,
                 streak,
+                false,
+                0,
                 rewardCalculator.calculateHabit(difficulty, streak)
         );
         RpgRewardGrant grant;
@@ -78,12 +86,15 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
         }
 
         CharacterResponse before = characterProgressionService.getCharacter(userId);
+        TodoCompletionContext completionContext = todoCompletionContext(userId, completionId);
         RpgReward reward = skillEffectService.applyCompletionEffects(
                 userId,
                 RewardSourceType.TODO_COMPLETION,
                 completionId,
                 difficulty,
                 0,
+                completionContext.beforeDeadline(),
+                completionContext.previousDailyCompletions(),
                 rewardCalculator.calculateTodo(difficulty)
         );
         RpgRewardGrant grant;
@@ -139,4 +150,36 @@ public class RpgRewardGrantServiceImpl implements RpgRewardGrantService {
         CharacterResponse character = characterProgressionService.getCharacter(userId);
         return new RewardOperationResult(0, 0, character.level(), character);
     }
+
+    private TodoCompletionContext todoCompletionContext(UUID userId, UUID todoId) {
+        TodoEntity todo = todoRepository.findByIdAndUserIdWithSubtasks(todoId, userId).orElse(null);
+        if (todo == null || todo.getCompletedAt() == null) {
+            return new TodoCompletionContext(false, 0);
+        }
+
+        ZoneId zone = resolveZone(todo.getUser().getTimezone());
+        OffsetDateTime start = todo.getCompletedAt().atZoneSameInstant(zone).toLocalDate()
+                .atStartOfDay(zone).toOffsetDateTime();
+        OffsetDateTime end = start.atZoneSameInstant(zone).plusDays(1).toOffsetDateTime();
+        long completedToday = todoRepository
+                .countByUserIdAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(userId, start, end);
+
+        boolean beforeDeadline = false;
+        if (todo.getDueDate() != null) {
+            LocalTime dueTime = todo.getDueTime() == null ? LocalTime.MAX : todo.getDueTime();
+            OffsetDateTime deadline = todo.getDueDate().atTime(dueTime).atZone(zone).toOffsetDateTime();
+            beforeDeadline = !todo.getCompletedAt().isAfter(deadline);
+        }
+        return new TodoCompletionContext(beforeDeadline, (int) Math.max(0, completedToday - 1));
+    }
+
+    private ZoneId resolveZone(String timezone) {
+        try {
+            return ZoneId.of(timezone);
+        } catch (DateTimeException | NullPointerException exception) {
+            return ZoneId.systemDefault();
+        }
+    }
+
+    private record TodoCompletionContext(boolean beforeDeadline, int previousDailyCompletions) {}
 }

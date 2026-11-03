@@ -32,10 +32,12 @@ public class SkillEffectServiceImpl implements SkillEffectService {
     @Override
     @Transactional
     public RpgReward applyCompletionEffects(UUID userId, RewardSourceType sourceType, UUID sourceId,
-                                            Difficulty difficulty, int streak, RpgReward baseReward) {
+                                            Difficulty difficulty, int streak, boolean completedBeforeDeadline,
+                                            int previousDailyCompletions, RpgReward baseReward) {
         OffsetDateTime now = OffsetDateTime.now();
         RpgReward reward = baseReward;
-        CompletionEffectContext context = new CompletionEffectContext(sourceType, sourceId, difficulty, streak);
+        CompletionEffectContext context = new CompletionEffectContext(
+                sourceType, sourceId, difficulty, streak, completedBeforeDeadline, previousDailyCompletions);
 
         for (SkillCastEntity cast : skillCastRepository.findAllActive(userId, now)) {
             boolean applied = false;

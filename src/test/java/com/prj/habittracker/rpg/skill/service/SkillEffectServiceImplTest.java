@@ -17,6 +17,8 @@ import com.prj.habittracker.rpg.skill.repository.SkillRepository;
 import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.skill.effect.completion.CompletionEffectContext;
+import com.prj.habittracker.rpg.skill.effect.completion.EarlyCompletionBonusExpEffectHandler;
+import com.prj.habittracker.rpg.skill.effect.completion.EarlyCompletionBonusCoinEffectHandler;
 import com.prj.habittracker.rpg.skill.service.impl.SkillEffectServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +51,9 @@ class SkillEffectServiceImplTest {
         );
         service = new SkillEffectServiceImpl(
                 repository,
-                new CompletionSkillEffectRegistry(List.of(new BonusExpEffectHandler(), new BonusCoinEffectHandler())),
+                new CompletionSkillEffectRegistry(List.of(
+                        new BonusExpEffectHandler(), new BonusCoinEffectHandler(),
+                        new EarlyCompletionBonusExpEffectHandler(), new EarlyCompletionBonusCoinEffectHandler())),
                 new PenaltySkillEffectRegistry(List.of(new BlockHpPenaltyEffectHandler(), new ProtectStreakEffectHandler())),
                 new PassiveCompletionEffectService(emptyPlayerRepository(), emptySkillRepository())
         );
@@ -61,7 +65,8 @@ class SkillEffectServiceImplTest {
         activeCasts.add(cast);
 
         RpgReward reward = service.applyCompletionEffects(
-                UUID.randomUUID(), RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 0, new RpgReward(20, 10));
+                UUID.randomUUID(), RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 0,
+                false, 0, new RpgReward(20, 10));
 
         assertThat(reward.exp()).isEqualTo(25);
         assertThat(reward.coin()).isEqualTo(10);
@@ -78,12 +83,14 @@ class SkillEffectServiceImplTest {
         activeCasts.add(cast);
 
         RpgReward otherTodo = service.applyCompletionEffects(
-                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 0, new RpgReward(10, 12));
+                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 0,
+                false, 0, new RpgReward(10, 12));
         assertThat(otherTodo.coin()).isEqualTo(12);
         assertThat(cast.getStatus()).isEqualTo(SkillCastStatus.ACTIVE);
 
         RpgReward selected = service.applyCompletionEffects(
-                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, selectedTodo, Difficulty.MEDIUM, 0, new RpgReward(10, 12));
+                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, selectedTodo, Difficulty.MEDIUM, 0,
+                false, 0, new RpgReward(10, 12));
         assertThat(selected.coin()).isEqualTo(18);
         assertThat(cast.getStatus()).isEqualTo(SkillCastStatus.CONSUMED);
     }
@@ -100,12 +107,14 @@ class SkillEffectServiceImplTest {
         activeCasts.add(cast);
 
         RpgReward wrongTarget = service.applyCompletionEffects(
-                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 0, new RpgReward(10, 12));
+                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 0,
+                false, 0, new RpgReward(10, 12));
         assertThat(wrongTarget).isEqualTo(new RpgReward(10, 12));
         assertThat(cast.getStatus()).isEqualTo(SkillCastStatus.ACTIVE);
 
         RpgReward reward = service.applyCompletionEffects(
-                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, selectedTodo, Difficulty.MEDIUM, 0, new RpgReward(10, 12));
+                UUID.randomUUID(), RewardSourceType.TODO_COMPLETION, selectedTodo, Difficulty.MEDIUM, 0,
+                false, 0, new RpgReward(10, 12));
 
         assertThat(reward.exp()).isEqualTo(20);
         assertThat(reward.coin()).isEqualTo(24);
@@ -160,7 +169,8 @@ class SkillEffectServiceImplTest {
         PassiveCompletionEffectService passiveService = new PassiveCompletionEffectService(players, skillRepository);
 
         RpgReward reward = passiveService.apply(UUID.randomUUID(),
-                new CompletionEffectContext(RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 14),
+                new CompletionEffectContext(RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(),
+                        Difficulty.MEDIUM, 14, false, 0),
                 new RpgReward(100, 10));
 
         assertThat(reward).isEqualTo(new RpgReward(110, 10));
@@ -176,7 +186,7 @@ class SkillEffectServiceImplTest {
         activeCasts.add(cast);
 
         RpgReward reward = service.applyCompletionEffects(UUID.randomUUID(),
-                RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(), Difficulty.EASY, 1,
+                RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(), Difficulty.EASY, 1, false, 0,
                 new RpgReward(20, 12));
 
         assertThat(reward).isEqualTo(new RpgReward(25, 15));
@@ -194,14 +204,62 @@ class SkillEffectServiceImplTest {
         PassiveCompletionEffectService passiveService = new PassiveCompletionEffectService(players, skills);
 
         RpgReward hard = passiveService.apply(UUID.randomUUID(),
-                new CompletionEffectContext(RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(), Difficulty.HARD, 1),
+                new CompletionEffectContext(RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(),
+                        Difficulty.HARD, 1, false, 0),
                 new RpgReward(100, 10));
         RpgReward medium = passiveService.apply(UUID.randomUUID(),
-                new CompletionEffectContext(RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(), Difficulty.MEDIUM, 1),
+                new CompletionEffectContext(RewardSourceType.HABIT_COMPLETION, UUID.randomUUID(),
+                        Difficulty.MEDIUM, 1, false, 0),
                 new RpgReward(100, 10));
 
         assertThat(hard).isEqualTo(new RpgReward(115, 10));
         assertThat(medium).isEqualTo(new RpgReward(100, 10));
+    }
+
+    @Test
+    void quickStepOnlyAppliesWhenSelectedTodoFinishesBeforeDeadline() {
+        UUID todoId = UUID.randomUUID();
+        SkillCastEntity cast = castWithEffects(
+                effect(SkillEffectType.EARLY_COMPLETION_BONUS_EXP, "25"),
+                effect(SkillEffectType.EARLY_COMPLETION_BONUS_COIN, "25")
+        );
+        cast.setTargetType(SkillTargetType.TODO);
+        cast.setTargetId(todoId);
+        activeCasts.add(cast);
+
+        RpgReward late = service.applyCompletionEffects(UUID.randomUUID(), RewardSourceType.TODO_COMPLETION,
+                todoId, Difficulty.MEDIUM, 0, false, 0, new RpgReward(20, 12));
+        assertThat(late).isEqualTo(new RpgReward(20, 12));
+        assertThat(cast.getStatus()).isEqualTo(SkillCastStatus.ACTIVE);
+
+        RpgReward early = service.applyCompletionEffects(UUID.randomUUID(), RewardSourceType.TODO_COMPLETION,
+                todoId, Difficulty.MEDIUM, 0, true, 0, new RpgReward(20, 12));
+        assertThat(early).isEqualTo(new RpgReward(25, 15));
+        assertThat(cast.getStatus()).isEqualTo(SkillCastStatus.CONSUMED);
+    }
+
+    @Test
+    void momentumAddsFivePercentPerPreviousDailyTodoAndCapsAtTwentyFive() {
+        PlayerCharacterEntity character = new PlayerCharacterEntity();
+        character.setCharacterClass(CharacterClass.RANGER);
+        SkillEffectEntity combo = effect(SkillEffectType.DAILY_COMBO_BONUS_REWARD, "5");
+        combo.setConditionValue(BigDecimal.valueOf(25));
+        SkillEntity passive = new SkillEntity();
+        passive.setEffects(List.of(combo));
+        PassiveCompletionEffectService passiveService = new PassiveCompletionEffectService(
+                playerRepositoryWith(character), skillRepositoryWith(passive));
+
+        RpgReward thirdTodo = passiveService.apply(UUID.randomUUID(),
+                new CompletionEffectContext(RewardSourceType.TODO_COMPLETION, UUID.randomUUID(),
+                        Difficulty.MEDIUM, 0, false, 2),
+                new RpgReward(100, 40));
+        RpgReward beyondCap = passiveService.apply(UUID.randomUUID(),
+                new CompletionEffectContext(RewardSourceType.TODO_COMPLETION, UUID.randomUUID(),
+                        Difficulty.MEDIUM, 0, false, 8),
+                new RpgReward(100, 40));
+
+        assertThat(thirdTodo).isEqualTo(new RpgReward(110, 44));
+        assertThat(beyondCap).isEqualTo(new RpgReward(125, 50));
     }
 
     private PlayerCharacterRepository playerRepositoryWith(PlayerCharacterEntity character) {

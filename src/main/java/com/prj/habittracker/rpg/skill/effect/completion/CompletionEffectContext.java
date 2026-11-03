@@ -9,5 +9,7 @@ public record CompletionEffectContext(
         RewardSourceType sourceType,
         UUID sourceId,
         Difficulty difficulty,
-        int streak
+        int streak,
+        boolean completedBeforeDeadline,
+        int previousDailyCompletions
 ) {}
