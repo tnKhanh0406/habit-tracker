@@ -7,10 +7,12 @@ import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
 import com.prj.habittracker.rpg.character.service.CharacterProgressionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class CharacterProgressionServiceImpl implements CharacterProgressionService {
     private final PlayerCharacterRepository playerCharacterRepository;
@@ -33,7 +35,12 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
             throw new IllegalArgumentException("HP damage must be greater than 0");
         }
         PlayerCharacterEntity character = getPlayerCharacter(userId);
-        character.setHp(Math.max(0, character.getHp() - amount));
+        if (amount >= character.getHp()) {
+            character.setCoin(character.getCoin() - Math.min(50L, character.getCoin() / 10));
+            character.setHp(Math.max(1, character.getMaxHp() / 2));
+        } else {
+            character.setHp(character.getHp() - amount);
+        }
         return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
     }
 

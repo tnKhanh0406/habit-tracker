@@ -81,6 +81,8 @@ public class PlayerCharacterEntity {
     @Column(name = "character_class", length = 30)
     private CharacterClass characterClass;
 
+    private OffsetDateTime classChangedAt;
+
     @Column(name = "mana_regenerated_at", nullable = false)
     private LocalDate manaRegeneratedAt;
 

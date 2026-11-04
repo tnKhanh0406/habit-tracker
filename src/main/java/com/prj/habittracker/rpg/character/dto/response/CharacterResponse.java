@@ -3,6 +3,7 @@ package com.prj.habittracker.rpg.character.dto.response;
 import com.prj.habittracker.common.enums.CharacterClass;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record CharacterResponse(
@@ -28,7 +29,8 @@ public record CharacterResponse(
         int vitality,
         int agility,
 
-        int statPoints
+        int statPoints,
+        OffsetDateTime nextClassChangeAt
 ) {
     public static CharacterResponse from(
             PlayerCharacterEntity character,
@@ -58,7 +60,8 @@ public record CharacterResponse(
                 character.getVitality(),
                 character.getAgility(),
 
-                character.getStatPoints()
+                character.getStatPoints(),
+                character.getClassChangedAt() == null ? null : character.getClassChangedAt().plusDays(7)
         );
     }
 }

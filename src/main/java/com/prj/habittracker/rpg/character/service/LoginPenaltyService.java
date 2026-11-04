@@ -73,6 +73,7 @@ public class LoginPenaltyService {
                 .filter(habit -> !adjustment.protectedHabitIds().contains(habit.getId()))
                 .forEach(habit -> habit.setCurrentStreak(0));
         int finalDamage = adjustment.damage();
+        CharacterResponse before = characterProgressionService.getCharacter(userId);
         CharacterResponse character = finalDamage > 0
                 ? characterProgressionService.applyHpDamage(userId, finalDamage)
                 : characterProgressionService.getCharacter(userId);
@@ -80,7 +81,10 @@ public class LoginPenaltyService {
                 -finalDamage,
                 character.hp(),
                 missedHabits,
-                overdueTodos
+                overdueTodos,
+                finalDamage > 0 && finalDamage >= before.hp(),
+                before.coin() - character.coin(),
+                character.coin()
         );
     }
 

@@ -4,6 +4,9 @@ public record PenaltySettlementResponse(
         int hpDelta,
         int currentHp,
         int missedHabits,
-        int overdueTodos
+        int overdueTodos,
+        boolean knockedOut,
+        long coinLost,
+        long currentCoin
 ) {
 }

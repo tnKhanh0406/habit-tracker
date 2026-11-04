@@ -11,6 +11,7 @@ import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
 import com.prj.habittracker.rpg.character.service.PlayerCharacterService;
+import com.prj.habittracker.inventory.service.InventoryService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,8 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
     private final CurrentUserService currentUserService;
     private final LevelPolicy levelPolicy;
     private final RewardRepository rewardRepository;
+    private final com.prj.habittracker.rpg.skill.repository.SkillCastRepository skillCastRepository;
+    private final InventoryService inventoryService;
 
     @Override
     public CharacterResponse getCharacter() {
@@ -124,10 +127,23 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
         UUID userId = currentUserService.getCurrentUserId();
         PlayerCharacterEntity character = playerCharacterRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Player character not found for user ID: " + userId));
-        if (character.getCharacterClass() != null) {
-            throw new IllegalStateException("Character class has already been selected");
+        var now = java.time.OffsetDateTime.now();
+        boolean firstClassSelection = character.getCharacterClass() == null;
+        if (character.getCharacterClass() == request.characterClass()) {
+            return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
         }
+        if (character.getClassChangedAt() != null && character.getClassChangedAt().plusDays(7).isAfter(now)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                    "You can change class again at " + character.getClassChangedAt().plusDays(7));
+        }
+        skillCastRepository.findAllActive(userId, now).forEach(cast -> {
+            cast.setStatus(com.prj.habittracker.common.enums.SkillCastStatus.CANCELLED);
+        });
         character.setCharacterClass(request.characterClass());
+        character.setClassChangedAt(now);
+        if (firstClassSelection) {
+            inventoryService.grantStarterPack(userId, request.characterClass());
+        }
         return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
     }
 
