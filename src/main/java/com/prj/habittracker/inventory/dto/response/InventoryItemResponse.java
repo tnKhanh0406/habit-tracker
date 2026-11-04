@@ -16,6 +16,7 @@ public record InventoryItemResponse(
         String icon,
         boolean stackable,
         int quantity,
+        boolean equipped,
         EquipmentItemResponse equipment,
         ConsumableItemResponse consumable
 ) {}

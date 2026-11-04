@@ -139,6 +139,7 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
         skillCastRepository.findAllActive(userId, now).forEach(cast -> {
             cast.setStatus(com.prj.habittracker.common.enums.SkillCastStatus.CANCELLED);
         });
+        inventoryService.unequipIncompatibleItems(userId, request.characterClass());
         character.setCharacterClass(request.characterClass());
         character.setClassChangedAt(now);
         if (firstClassSelection) {

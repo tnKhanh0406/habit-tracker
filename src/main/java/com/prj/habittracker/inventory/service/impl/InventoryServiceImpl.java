@@ -6,13 +6,17 @@ import com.prj.habittracker.inventory.dto.response.*;
 import com.prj.habittracker.inventory.effect.ConsumableEffectRegistry;
 import com.prj.habittracker.inventory.entity.InventoryItemEntity;
 import com.prj.habittracker.inventory.entity.InventoryTransactionEntity;
+import com.prj.habittracker.inventory.entity.EquippedItemEntity;
+import com.prj.habittracker.inventory.repository.EquippedItemRepository;
 import com.prj.habittracker.inventory.repository.InventoryItemRepository;
 import com.prj.habittracker.inventory.repository.InventoryTransactionRepository;
 import com.prj.habittracker.inventory.service.InventoryService;
 import com.prj.habittracker.item.entity.ItemEntity;
+import com.prj.habittracker.item.entity.EquipmentDefinitionEntity;
 import com.prj.habittracker.item.repository.ItemRepository;
 import com.prj.habittracker.rpg.character.config.LevelPolicy;
 import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
+import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +42,7 @@ public class InventoryServiceImpl implements InventoryService {
     );
 
     private final InventoryItemRepository inventoryItemRepository;
+    private final EquippedItemRepository equippedItemRepository;
     private final InventoryTransactionRepository transactionRepository;
     private final ItemRepository itemRepository;
     private final PlayerCharacterRepository playerCharacterRepository;
@@ -46,9 +53,13 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public List<InventoryItemResponse> getInventory() {
+        UUID userId = currentUserService.getCurrentUserId();
+        Set<UUID> equippedIds = equippedItemRepository.findAllByUserId(userId).stream()
+                .map(equipped -> equipped.getInventoryItem().getId())
+                .collect(Collectors.toSet());
         return inventoryItemRepository
-                .findAllByUserIdAndQuantityGreaterThanOrderByAcquiredAtAsc(currentUserService.getCurrentUserId(), 0)
-                .stream().map(this::toResponse).toList();
+                .findAllByUserIdAndQuantityGreaterThanOrderByAcquiredAtAsc(userId, 0)
+                .stream().map(inventory -> toResponse(inventory, equippedIds.contains(inventory.getId()))).toList();
     }
 
     @Override
@@ -84,6 +95,73 @@ public class InventoryServiceImpl implements InventoryService {
         addItem(userId, "MINOR_MANA_POTION", 2, InventoryTransactionType.STARTER_GRANT);
     }
 
+    @Override
+    @Transactional
+    public CharacterResponse equipItem(UUID inventoryItemId) {
+        UUID userId = currentUserService.getCurrentUserId();
+        var character = playerCharacterRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Player character not found"));
+        InventoryItemEntity inventory = inventoryItemRepository.findByIdAndUserIdForUpdate(inventoryItemId, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Inventory item not found"));
+        EquipmentDefinitionEntity equipment = requireEquipment(inventory);
+        if (equipment.getRequiredClass() != null && equipment.getRequiredClass() != character.getCharacterClass()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This equipment requires class " + equipment.getRequiredClass());
+        }
+        if (character.getLevel() < equipment.getRequiredLevel()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This equipment requires level " + equipment.getRequiredLevel());
+        }
+
+        var sameItem = equippedItemRepository.findByUserIdAndInventoryItemIdForUpdate(userId, inventoryItemId);
+        if (sameItem.isPresent()) {
+            return response(character);
+        }
+        equippedItemRepository.findByUserIdAndSlotForUpdate(userId, equipment.getSlot()).ifPresent(current -> {
+            applyBonuses(character, current.getInventoryItem().getItem().getEquipmentDefinition(), -1);
+            equippedItemRepository.delete(current);
+            equippedItemRepository.flush();
+        });
+
+        EquippedItemEntity equipped = new EquippedItemEntity();
+        equipped.setUserId(userId);
+        equipped.setInventoryItem(inventory);
+        equipped.setSlot(equipment.getSlot());
+        equippedItemRepository.save(equipped);
+        applyBonuses(character, equipment, 1);
+        return response(character);
+    }
+
+    @Override
+    @Transactional
+    public CharacterResponse unequipItem(UUID inventoryItemId) {
+        UUID userId = currentUserService.getCurrentUserId();
+        var character = playerCharacterRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Player character not found"));
+        EquippedItemEntity equipped = equippedItemRepository
+                .findByUserIdAndInventoryItemIdForUpdate(userId, inventoryItemId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Item is not equipped"));
+        applyBonuses(character, equipped.getInventoryItem().getItem().getEquipmentDefinition(), -1);
+        equippedItemRepository.delete(equipped);
+        return response(character);
+    }
+
+    @Override
+    @Transactional
+    public void unequipIncompatibleItems(UUID userId, CharacterClass characterClass) {
+        var character = playerCharacterRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Player character not found"));
+        equippedItemRepository.findAllByUserId(userId).stream()
+                .filter(equipped -> {
+                    CharacterClass required = equipped.getInventoryItem().getItem().getEquipmentDefinition().getRequiredClass();
+                    return required != null && required != characterClass;
+                })
+                .forEach(equipped -> {
+                    applyBonuses(character, equipped.getInventoryItem().getItem().getEquipmentDefinition(), -1);
+                    equippedItemRepository.delete(equipped);
+                });
+    }
+
     private void addItem(UUID userId, String code, int quantity, InventoryTransactionType transactionType) {
         ItemEntity item = itemRepository.findByCodeAndEnabledTrue(code)
                 .orElseThrow(() -> new IllegalStateException("Enabled item not found: " + code));
@@ -116,7 +194,31 @@ public class InventoryServiceImpl implements InventoryService {
         transactionRepository.save(transaction);
     }
 
-    private InventoryItemResponse toResponse(InventoryItemEntity inventory) {
+    private EquipmentDefinitionEntity requireEquipment(InventoryItemEntity inventory) {
+        if (inventory.getQuantity() <= 0 || inventory.getItem().getItemType() != ItemType.EQUIPMENT
+                || inventory.getItem().getEquipmentDefinition() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This item cannot be equipped");
+        }
+        return inventory.getItem().getEquipmentDefinition();
+    }
+
+    private void applyBonuses(PlayerCharacterEntity character,
+                              EquipmentDefinitionEntity equipment, int multiplier) {
+        character.setStrength(character.getStrength() + equipment.getStrengthBonus() * multiplier);
+        character.setIntelligence(character.getIntelligence() + equipment.getIntelligenceBonus() * multiplier);
+        character.setVitality(character.getVitality() + equipment.getVitalityBonus() * multiplier);
+        character.setAgility(character.getAgility() + equipment.getAgilityBonus() * multiplier);
+        character.setMaxHp(character.getMaxHp() + equipment.getMaxHpBonus() * multiplier);
+        character.setMaxMp(character.getMaxMp() + equipment.getMaxMpBonus() * multiplier);
+        character.setHp(Math.min(character.getHp(), character.getMaxHp()));
+        character.setMp(Math.min(character.getMp(), character.getMaxMp()));
+    }
+
+    private CharacterResponse response(PlayerCharacterEntity character) {
+        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+    }
+
+    private InventoryItemResponse toResponse(InventoryItemEntity inventory, boolean equipped) {
         ItemEntity item = inventory.getItem();
         EquipmentItemResponse equipment = item.getEquipmentDefinition() == null ? null : new EquipmentItemResponse(
                 item.getEquipmentDefinition().getSlot(), item.getEquipmentDefinition().getRequiredClass(),
@@ -128,6 +230,6 @@ public class InventoryServiceImpl implements InventoryService {
                 item.getConsumableDefinition().getEffectType(), item.getConsumableDefinition().getEffectValue());
         return new InventoryItemResponse(inventory.getId(), item.getId(), item.getCode(), item.getName(),
                 item.getDescription(), item.getItemType(), item.getRarity(), item.getIcon(), item.getStackable(),
-                inventory.getQuantity(), equipment, consumable);
+                inventory.getQuantity(), equipped, equipment, consumable);
     }
 }
