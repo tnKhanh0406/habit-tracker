@@ -14,10 +14,11 @@ import com.prj.habittracker.inventory.service.InventoryService;
 import com.prj.habittracker.item.entity.ItemEntity;
 import com.prj.habittracker.item.entity.EquipmentDefinitionEntity;
 import com.prj.habittracker.item.repository.ItemRepository;
-import com.prj.habittracker.rpg.character.config.LevelPolicy;
 import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
+import com.prj.habittracker.rpg.character.service.CharacterResponseFactory;
+import com.prj.habittracker.rpg.character.service.CharacterStatService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -48,7 +49,8 @@ public class InventoryServiceImpl implements InventoryService {
     private final PlayerCharacterRepository playerCharacterRepository;
     private final CurrentUserService currentUserService;
     private final ConsumableEffectRegistry consumableEffectRegistry;
-    private final LevelPolicy levelPolicy;
+    private final CharacterResponseFactory characterResponseFactory;
+    private final CharacterStatService characterStatService;
 
     @Override
     @Transactional(readOnly = true)
@@ -84,7 +86,7 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setQuantity(inventory.getQuantity() - 1);
         record(userId, item, -1, InventoryTransactionType.CONSUME, "INVENTORY_ITEM", inventory.getId());
         return new UseItemResponse(inventory.getId(), inventory.getQuantity(),
-                CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel())));
+                characterResponseFactory.create(character));
     }
 
     @Override
@@ -118,7 +120,6 @@ public class InventoryServiceImpl implements InventoryService {
             return response(character);
         }
         equippedItemRepository.findByUserIdAndSlotForUpdate(userId, equipment.getSlot()).ifPresent(current -> {
-            applyBonuses(character, current.getInventoryItem().getItem().getEquipmentDefinition(), -1);
             equippedItemRepository.delete(current);
             equippedItemRepository.flush();
         });
@@ -127,8 +128,8 @@ public class InventoryServiceImpl implements InventoryService {
         equipped.setUserId(userId);
         equipped.setInventoryItem(inventory);
         equipped.setSlot(equipment.getSlot());
-        equippedItemRepository.save(equipped);
-        applyBonuses(character, equipment, 1);
+        equippedItemRepository.saveAndFlush(equipped);
+        characterStatService.clampResources(character);
         return response(character);
     }
 
@@ -141,8 +142,9 @@ public class InventoryServiceImpl implements InventoryService {
         EquippedItemEntity equipped = equippedItemRepository
                 .findByUserIdAndInventoryItemIdForUpdate(userId, inventoryItemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Item is not equipped"));
-        applyBonuses(character, equipped.getInventoryItem().getItem().getEquipmentDefinition(), -1);
         equippedItemRepository.delete(equipped);
+        equippedItemRepository.flush();
+        characterStatService.clampResources(character);
         return response(character);
     }
 
@@ -151,15 +153,14 @@ public class InventoryServiceImpl implements InventoryService {
     public void unequipIncompatibleItems(UUID userId, CharacterClass characterClass) {
         var character = playerCharacterRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Player character not found"));
-        equippedItemRepository.findAllByUserId(userId).stream()
+        List<EquippedItemEntity> incompatible = equippedItemRepository.findAllByUserId(userId).stream()
                 .filter(equipped -> {
                     CharacterClass required = equipped.getInventoryItem().getItem().getEquipmentDefinition().getRequiredClass();
                     return required != null && required != characterClass;
-                })
-                .forEach(equipped -> {
-                    applyBonuses(character, equipped.getInventoryItem().getItem().getEquipmentDefinition(), -1);
-                    equippedItemRepository.delete(equipped);
-                });
+                }).toList();
+        equippedItemRepository.deleteAll(incompatible);
+        equippedItemRepository.flush();
+        characterStatService.clampResources(character);
     }
 
     private void addItem(UUID userId, String code, int quantity, InventoryTransactionType transactionType) {
@@ -202,20 +203,8 @@ public class InventoryServiceImpl implements InventoryService {
         return inventory.getItem().getEquipmentDefinition();
     }
 
-    private void applyBonuses(PlayerCharacterEntity character,
-                              EquipmentDefinitionEntity equipment, int multiplier) {
-        character.setStrength(character.getStrength() + equipment.getStrengthBonus() * multiplier);
-        character.setIntelligence(character.getIntelligence() + equipment.getIntelligenceBonus() * multiplier);
-        character.setVitality(character.getVitality() + equipment.getVitalityBonus() * multiplier);
-        character.setAgility(character.getAgility() + equipment.getAgilityBonus() * multiplier);
-        character.setMaxHp(character.getMaxHp() + equipment.getMaxHpBonus() * multiplier);
-        character.setMaxMp(character.getMaxMp() + equipment.getMaxMpBonus() * multiplier);
-        character.setHp(Math.min(character.getHp(), character.getMaxHp()));
-        character.setMp(Math.min(character.getMp(), character.getMaxMp()));
-    }
-
     private CharacterResponse response(PlayerCharacterEntity character) {
-        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+        return characterResponseFactory.create(character);
     }
 
     private InventoryItemResponse toResponse(InventoryItemEntity inventory, boolean equipped) {

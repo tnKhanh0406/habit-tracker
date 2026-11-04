@@ -2,6 +2,7 @@ package com.prj.habittracker.rpg.character.service;
 
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.character.service.impl.ManaServiceImpl;
+import com.prj.habittracker.support.BaseCharacterStatService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -10,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ManaServiceImplTest {
-    private final ManaService service = new ManaServiceImpl();
+    private final ManaService service = new ManaServiceImpl(new BaseCharacterStatService());
 
     @Test
     void regeneratesTenManaPerDayWithoutExceedingMaximum() {

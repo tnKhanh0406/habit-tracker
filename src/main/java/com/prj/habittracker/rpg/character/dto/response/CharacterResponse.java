@@ -2,7 +2,9 @@ package com.prj.habittracker.rpg.character.dto.response;
 
 import com.prj.habittracker.common.enums.CharacterClass;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
+import com.prj.habittracker.rpg.character.model.EffectiveCharacterStats;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -29,12 +31,21 @@ public record CharacterResponse(
         int vitality,
         int agility,
 
+        int baseMaxHp,
+        int baseMaxMp,
+        int baseStrength,
+        int baseIntelligence,
+        int baseVitality,
+        int baseAgility,
+        BigDecimal bossDamagePercent,
+
         int statPoints,
         OffsetDateTime nextClassChangeAt
 ) {
     public static CharacterResponse from(
             PlayerCharacterEntity character,
-            long nextLevelExp
+            long nextLevelExp,
+            EffectiveCharacterStats stats
     ) {
 
         return new CharacterResponse(
@@ -47,18 +58,26 @@ public record CharacterResponse(
                 nextLevelExp,
 
                 character.getHp(),
-                character.getMaxHp(),
+                stats.maxHp(),
 
                 character.getMp(),
-                character.getMaxMp(),
+                stats.maxMp(),
 
                 character.getCoin(),
                 character.getGem(),
 
+                stats.strength(),
+                stats.intelligence(),
+                stats.vitality(),
+                stats.agility(),
+
+                character.getMaxHp(),
+                character.getMaxMp(),
                 character.getStrength(),
                 character.getIntelligence(),
                 character.getVitality(),
                 character.getAgility(),
+                stats.bossDamagePercent(),
 
                 character.getStatPoints(),
                 character.getClassChangedAt() == null ? null : character.getClassChangedAt().plusDays(7)

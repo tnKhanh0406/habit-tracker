@@ -4,6 +4,8 @@ import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
 import com.prj.habittracker.rpg.character.config.LevelPolicy;
 import com.prj.habittracker.rpg.character.service.impl.CharacterProgressionServiceImpl;
+import com.prj.habittracker.rpg.character.service.impl.CharacterResponseFactoryImpl;
+import com.prj.habittracker.support.BaseCharacterStatService;
 import org.junit.jupiter.api.Test;
 import java.lang.reflect.Proxy;
 import java.util.Optional;
@@ -19,7 +21,10 @@ class KnockoutTest {
         var repository = (PlayerCharacterRepository) Proxy.newProxyInstance(
                 PlayerCharacterRepository.class.getClassLoader(), new Class<?>[]{PlayerCharacterRepository.class},
                 (proxy, method, args) -> Optional.of(character));
-        var service = new CharacterProgressionServiceImpl(repository, new LevelPolicy());
+        var statService = new BaseCharacterStatService();
+        var levelPolicy = new LevelPolicy();
+        var service = new CharacterProgressionServiceImpl(repository, levelPolicy,
+                new CharacterResponseFactoryImpl(statService, levelPolicy), statService);
         var result = service.applyHpDamage(UUID.randomUUID(), 150);
         assertThat(result.hp()).isEqualTo(50);
         assertThat(result.coin()).isEqualTo(950);

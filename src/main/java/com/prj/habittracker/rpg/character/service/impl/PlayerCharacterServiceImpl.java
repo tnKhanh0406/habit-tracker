@@ -3,7 +3,6 @@ package com.prj.habittracker.rpg.character.service.impl;
 import com.prj.habittracker.common.security.CurrentUserService;
 import com.prj.habittracker.reward.entity.RewardEntity;
 import com.prj.habittracker.reward.repository.RewardRepository;
-import com.prj.habittracker.rpg.character.config.LevelPolicy;
 import com.prj.habittracker.rpg.character.dto.request.AllocateStatRequest;
 import com.prj.habittracker.rpg.character.dto.request.SelectCharacterClassRequest;
 import com.prj.habittracker.rpg.character.dto.response.AllocateStatResponse;
@@ -11,6 +10,8 @@ import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
 import com.prj.habittracker.rpg.character.service.PlayerCharacterService;
+import com.prj.habittracker.rpg.character.service.CharacterResponseFactory;
+import com.prj.habittracker.rpg.character.service.CharacterStatService;
 import com.prj.habittracker.inventory.service.InventoryService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,17 +26,18 @@ import java.util.UUID;
 public class PlayerCharacterServiceImpl implements PlayerCharacterService {
     private final PlayerCharacterRepository playerCharacterRepository;
     private final CurrentUserService currentUserService;
-    private final LevelPolicy levelPolicy;
     private final RewardRepository rewardRepository;
     private final com.prj.habittracker.rpg.skill.repository.SkillCastRepository skillCastRepository;
     private final InventoryService inventoryService;
+    private final CharacterResponseFactory characterResponseFactory;
+    private final CharacterStatService characterStatService;
 
     @Override
     public CharacterResponse getCharacter() {
         UUID userId = currentUserService.getCurrentUserId();
         PlayerCharacterEntity playerCharacter = playerCharacterRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Player character not found for user ID: " + userId));
-        return CharacterResponse.from(playerCharacter, levelPolicy.requiredExp(playerCharacter.getLevel()));
+        return characterResponseFactory.create(playerCharacter);
     }
 
     @Override
@@ -70,7 +72,7 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
                 .build();
 
         PlayerCharacterEntity saved = playerCharacterRepository.save(character);
-        return CharacterResponse.from(saved, levelPolicy.requiredExp(saved.getLevel()));
+        return characterResponseFactory.create(saved);
     }
 
     @Override
@@ -95,11 +97,12 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
 
         character.setStatPoints(character.getStatPoints() - request.points());
         PlayerCharacterEntity saved = playerCharacterRepository.save(character);
+        var effective = characterStatService.calculate(saved);
         return new AllocateStatResponse(
-                saved.getStrength(),
-                saved.getIntelligence(),
-                saved.getVitality(),
-                saved.getAgility(),
+                effective.strength(),
+                effective.intelligence(),
+                effective.vitality(),
+                effective.agility(),
                 saved.getStatPoints()
         );
     }
@@ -130,7 +133,7 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
         var now = java.time.OffsetDateTime.now();
         boolean firstClassSelection = character.getCharacterClass() == null;
         if (character.getCharacterClass() == request.characterClass()) {
-            return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+            return characterResponseFactory.create(character);
         }
         if (character.getClassChangedAt() != null && character.getClassChangedAt().plusDays(7).isAfter(now)) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
@@ -145,7 +148,7 @@ public class PlayerCharacterServiceImpl implements PlayerCharacterService {
         if (firstClassSelection) {
             inventoryService.grantStarterPack(userId, request.characterClass());
         }
-        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+        return characterResponseFactory.create(character);
     }
 
 

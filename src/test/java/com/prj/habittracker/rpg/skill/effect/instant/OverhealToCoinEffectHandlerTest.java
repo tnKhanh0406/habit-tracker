@@ -3,13 +3,14 @@ package com.prj.habittracker.rpg.skill.effect.instant;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.skill.entity.SkillEffectEntity;
 import org.junit.jupiter.api.Test;
+import com.prj.habittracker.support.BaseCharacterStatService;
 
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OverhealToCoinEffectHandlerTest {
-    private final OverhealToCoinEffectHandler handler = new OverhealToCoinEffectHandler();
+    private final OverhealToCoinEffectHandler handler = new OverhealToCoinEffectHandler(new BaseCharacterStatService());
 
     @Test
     void convertsOnlyOverhealingToCoin() {

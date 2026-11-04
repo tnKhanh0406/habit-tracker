@@ -5,6 +5,8 @@ import com.prj.habittracker.rpg.character.dto.response.CharacterResponse;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
 import com.prj.habittracker.rpg.character.repository.PlayerCharacterRepository;
 import com.prj.habittracker.rpg.character.service.CharacterProgressionService;
+import com.prj.habittracker.rpg.character.service.CharacterResponseFactory;
+import com.prj.habittracker.rpg.character.service.CharacterStatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,8 @@ import java.util.UUID;
 public class CharacterProgressionServiceImpl implements CharacterProgressionService {
     private final PlayerCharacterRepository playerCharacterRepository;
     private final LevelPolicy levelPolicy;
+    private final CharacterResponseFactory characterResponseFactory;
+    private final CharacterStatService characterStatService;
 
     private PlayerCharacterEntity getPlayerCharacter(UUID userId) {
         return playerCharacterRepository.findByUserId(userId)
@@ -26,7 +30,7 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
     @Override
     public CharacterResponse getCharacter(UUID userId) {
         PlayerCharacterEntity character = getPlayerCharacter(userId);
-        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+        return characterResponseFactory.create(character);
     }
 
     @Override
@@ -37,11 +41,11 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
         PlayerCharacterEntity character = getPlayerCharacter(userId);
         if (amount >= character.getHp()) {
             character.setCoin(character.getCoin() - Math.min(50L, character.getCoin() / 10));
-            character.setHp(Math.max(1, character.getMaxHp() / 2));
+            character.setHp(Math.max(1, characterStatService.calculate(character).maxHp() / 2));
         } else {
             character.setHp(character.getHp() - amount);
         }
-        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+        return characterResponseFactory.create(character);
     }
 
     @Override
@@ -54,7 +58,7 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
         character.setCoin(character.getCoin() + coin);
         addExp(character, exp);
 
-        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+        return characterResponseFactory.create(character);
     }
 
     @Override
@@ -73,7 +77,7 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
 
         removeExp(character, exp);
 
-        return CharacterResponse.from(character, levelPolicy.requiredExp(character.getLevel()));
+        return characterResponseFactory.create(character);
     }
 
     private void addExp(PlayerCharacterEntity character, long amount) {
@@ -103,7 +107,7 @@ public class CharacterProgressionServiceImpl implements CharacterProgressionServ
         }
 
         if (reachedNewLevel) {
-            character.setHp(character.getMaxHp());
+            character.setHp(characterStatService.calculate(character).maxHp());
         }
     }
 

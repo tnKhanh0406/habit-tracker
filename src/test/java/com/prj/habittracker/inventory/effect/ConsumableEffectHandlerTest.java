@@ -2,6 +2,7 @@ package com.prj.habittracker.inventory.effect;
 
 import com.prj.habittracker.item.entity.ConsumableDefinitionEntity;
 import com.prj.habittracker.rpg.character.entity.PlayerCharacterEntity;
+import com.prj.habittracker.support.BaseCharacterStatService;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -18,7 +19,7 @@ class ConsumableEffectHandlerTest {
         character.setMaxHp(100);
         ConsumableDefinitionEntity potion = new ConsumableDefinitionEntity();
         potion.setEffectValue(BigDecimal.valueOf(20));
-        RestoreHpConsumableHandler handler = new RestoreHpConsumableHandler();
+        RestoreHpConsumableHandler handler = new RestoreHpConsumableHandler(new BaseCharacterStatService());
 
         handler.apply(potion, character);
         assertThat(character.getHp()).isEqualTo(100);
@@ -33,7 +34,7 @@ class ConsumableEffectHandlerTest {
         ConsumableDefinitionEntity potion = new ConsumableDefinitionEntity();
         potion.setEffectValue(BigDecimal.valueOf(15));
 
-        new RestoreMpConsumableHandler().apply(potion, character);
+        new RestoreMpConsumableHandler(new BaseCharacterStatService()).apply(potion, character);
 
         assertThat(character.getMp()).isEqualTo(50);
     }
