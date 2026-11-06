@@ -3,9 +3,11 @@ package com.prj.habittracker.boss.service.impl;
 import com.prj.habittracker.boss.dto.request.StartBossBattleRequest;
 import com.prj.habittracker.boss.dto.response.BossBattleResponse;
 import com.prj.habittracker.boss.dto.response.BossCatalogResponse;
+import com.prj.habittracker.boss.dto.response.BossRewardResponse;
 import com.prj.habittracker.boss.entity.BossDefinitionEntity;
 import com.prj.habittracker.boss.entity.PartyBossBattleEntity;
 import com.prj.habittracker.boss.repository.BossDefinitionRepository;
+import com.prj.habittracker.boss.repository.BossRewardRepository;
 import com.prj.habittracker.boss.repository.PartyBossBattleRepository;
 import com.prj.habittracker.boss.service.PartyBossService;
 import com.prj.habittracker.common.enums.*;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 public class PartyBossServiceImpl implements PartyBossService {
     private final BossDefinitionRepository bossRepository;
     private final PartyBossBattleRepository battleRepository;
+    private final BossRewardRepository rewardRepository;
     private final PartyMemberRepository memberRepository;
     private final PartyRepository partyRepository;
     private final UserRepository userRepository;
@@ -46,6 +49,12 @@ public class PartyBossServiceImpl implements PartyBossService {
                 .collect(Collectors.toMap(battle -> battle.getBossDefinition().getId(), Function.identity()));
         boolean hasActive = battles.values().stream().anyMatch(b -> b.getStatus() == BossBattleStatus.ACTIVE);
         List<BossDefinitionEntity> definitions = bossRepository.findAllByEnabledTrueOrderBySequenceOrderAsc();
+        Map<UUID, List<BossRewardResponse>> rewardsByBoss = rewardRepository
+                .findAllByBossDefinitionIdInOrderBySortOrderAsc(
+                        definitions.stream().map(BossDefinitionEntity::getId).toList())
+                .stream().collect(Collectors.groupingBy(reward -> reward.getBossDefinition().getId(),
+                        Collectors.mapping(reward -> new BossRewardResponse(reward.getRewardType(), reward.getAmount()),
+                                Collectors.toList())));
 
         return definitions.stream().map(boss -> {
             PartyBossBattleEntity battle = battles.get(boss.getId());
@@ -65,7 +74,8 @@ public class PartyBossServiceImpl implements PartyBossService {
                 reason = "Defeat the previous boss to unlock";
             }
             return new BossCatalogResponse(boss.getId(), boss.getCode(), boss.getName(), boss.getDescription(),
-                    boss.getDifficulty(), boss.getSequenceOrder(), boss.getBaseHp(), boss.getIcon(), availability, reason);
+                    boss.getDifficulty(), boss.getSequenceOrder(), boss.getBaseHp(), boss.getIcon(),
+                    rewardsByBoss.getOrDefault(boss.getId(), List.of()), availability, reason);
         }).toList();
     }
 

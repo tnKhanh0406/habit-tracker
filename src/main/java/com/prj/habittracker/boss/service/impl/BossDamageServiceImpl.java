@@ -7,6 +7,7 @@ import com.prj.habittracker.boss.repository.BossDamageEventRepository;
 import com.prj.habittracker.boss.repository.PartyBossBattleRepository;
 import com.prj.habittracker.boss.service.BossDamageResult;
 import com.prj.habittracker.boss.service.BossDamageService;
+import com.prj.habittracker.boss.service.BossRewardService;
 import com.prj.habittracker.common.enums.*;
 import com.prj.habittracker.party.entity.PartyMemberEntity;
 import com.prj.habittracker.party.repository.PartyMemberRepository;
@@ -34,6 +35,7 @@ public class BossDamageServiceImpl implements BossDamageService {
     private final PlayerCharacterRepository characterRepository;
     private final CharacterStatService characterStatService;
     private final BossDamagePolicy damagePolicy;
+    private final BossRewardService bossRewardService;
 
     @Override
     @Transactional
@@ -49,6 +51,8 @@ public class BossDamageServiceImpl implements BossDamageService {
                     || !currentMembership.getParty().getId().equals(event.getParty().getId())) {
                 return BossDamageResult.noChange();
             }
+            partyRepository.findByIdForUpdate(currentMembership.getParty().getId())
+                    .orElseThrow(() -> new IllegalStateException("Party no longer exists"));
             PartyBossBattleEntity battle = battleRepository.findByIdForUpdate(event.getBattle().getId())
                     .orElseThrow(() -> new IllegalStateException("Boss battle no longer exists"));
             if (battle.getStatus() != BossBattleStatus.ACTIVE) return BossDamageResult.noChange();
@@ -56,6 +60,10 @@ public class BossDamageServiceImpl implements BossDamageService {
             event.setDamage(reapplied);
             event.setStatus(BossDamageStatus.APPLIED);
             event.setReversedAt(null);
+            eventRepository.flush();
+            if (battle.getStatus() == BossBattleStatus.DEFEATED) {
+                bossRewardService.grantDefeatRewards(battle);
+            }
             return result(battle, -reapplied);
         }
 
@@ -63,6 +71,8 @@ public class BossDamageServiceImpl implements BossDamageService {
         if (membership == null || membership.getParty().getStatus() != PartyStatus.ACTIVE) {
             return BossDamageResult.noChange();
         }
+        partyRepository.findByIdForUpdate(membership.getParty().getId())
+                .orElseThrow(() -> new IllegalStateException("Party no longer exists"));
         PartyBossBattleEntity battle = battleRepository
                 .findByPartyIdAndStatusForUpdate(membership.getParty().getId(), BossBattleStatus.ACTIVE)
                 .orElse(null);
@@ -87,7 +97,10 @@ public class BossDamageServiceImpl implements BossDamageService {
         event.setBossDamagePercentSnapshot(stats.bossDamagePercent());
         event.setDamage(actualDamage);
         event.setStatus(BossDamageStatus.APPLIED);
-        eventRepository.save(event);
+        eventRepository.saveAndFlush(event);
+        if (battle.getStatus() == BossBattleStatus.DEFEATED) {
+            bossRewardService.grantDefeatRewards(battle);
+        }
         return result(battle, -actualDamage);
     }
 
@@ -97,28 +110,18 @@ public class BossDamageServiceImpl implements BossDamageService {
         BossDamageEventEntity event = eventRepository.findBySourceForUpdate(sourceType, sourceId).orElse(null);
         if (event == null || event.getStatus() == BossDamageStatus.REVERSED) return BossDamageResult.noChange();
         requireOwner(event, userId);
-        partyRepository.findByIdForUpdate(event.getParty().getId())
-                .orElseThrow(() -> new IllegalStateException("Party no longer exists"));
         PartyBossBattleEntity battle = battleRepository.findByIdForUpdate(event.getBattle().getId())
                 .orElseThrow(() -> new IllegalStateException("Boss battle no longer exists"));
 
-        if (battle.getStatus() == BossBattleStatus.DEFEATED) {
-            PartyBossBattleEntity active = battleRepository
-                    .findByPartyIdAndStatusForUpdate(battle.getParty().getId(), BossBattleStatus.ACTIVE)
-                    .orElse(null);
-            if (active != null && !active.getId().equals(battle.getId())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "This completion cannot be undone after the next boss battle has started");
-            }
-            battle.setStatus(BossBattleStatus.ACTIVE);
-            battle.setDefeatedAt(null);
-        }
+        int restoredHp = 0;
         if (battle.getStatus() == BossBattleStatus.ACTIVE) {
-            battle.setCurrentHp(Math.min(battle.getMaxHp(), battle.getCurrentHp() + event.getDamage()));
+            int previousHp = battle.getCurrentHp();
+            battle.setCurrentHp(Math.min(battle.getMaxHp(), previousHp + event.getDamage()));
+            restoredHp = battle.getCurrentHp() - previousHp;
         }
         event.setStatus(BossDamageStatus.REVERSED);
         event.setReversedAt(OffsetDateTime.now());
-        return result(battle, event.getDamage());
+        return result(battle, restoredHp);
     }
 
     private int applyDamage(PartyBossBattleEntity battle, int requestedDamage) {
